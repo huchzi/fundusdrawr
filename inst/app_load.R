@@ -3,7 +3,7 @@ library(shiny)
 ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
-      fileInput("svg_file", "Upload JSON")
+      fileInput("svg_file", "Upload JSON"),
     ),
     mainPanel(
       htmlOutput("svg_image")

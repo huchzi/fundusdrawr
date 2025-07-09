@@ -1,11 +1,14 @@
-detachment_list <- rep(180, 12)
-detachment_list[1:3] <- c(90, 70, 90)
-# detachment[4:8] <- 0
+detachment_obj <- list(type = "detachment", inner_radii = rep(180, 12))
+detachment_obj$inner_radii[1:3] <-  c(90, 70, 90)
 
-object_list <- list(detachment_list, tear_list)
+tear_obj <- list(type = "tear",
+              lokalisation = "2",
+              eccentricity = 95,
+              groesse = "gross")
+
+object_list <- list(detachment_obj, tear_obj)
 
 stringr::str_c(ora_clip,
                fundus_template,
-               detachment(detachment_list),
-               tear(list(lokalisation=2, groesse = "gross", eccentricity = 95))) |>
+               render_objects(object_list)) |>
   fundus_image() |> writeLines(con = "inst/test.svg")
