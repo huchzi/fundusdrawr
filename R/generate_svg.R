@@ -1,5 +1,6 @@
 # Generate the SVG file from a content string
-finalize_svg <- function(svg_content) {
+#' @export
+fundus_image <- function(svg_content) {
   svg_header <- '<svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">\n'
   svg_footer <- '</svg>\n'
 

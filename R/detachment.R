@@ -1,4 +1,6 @@
-render_detachment <- function(inner_radii, outer_radius = 200) {
+detachment <- function(detachment_obj) {
+  inner_radii <- detachment_obj$inner_radii
+  outer_radius = 200
   if (length(inner_radii) != 12) {
     stop("inner_radii must be a vector of 12 numeric values (one for each hour).")
   }

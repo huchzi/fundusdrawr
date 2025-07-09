@@ -1,5 +1,5 @@
-# Verwende generate_svg_ring zur Darstellung der Amotio
-render_detachment_list <- function(amotio_list, outer_radius = 120, default_inner_radius = 60) {
+#' exports
+detachments <- function(amotio_list, outer_radius = 120, default_inner_radius = 60) {
   if (is.null(amotio_list)) return("")
 
   # Standard: alle Positionen auf äußeren Radius
