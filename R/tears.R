@@ -7,13 +7,13 @@ tear <- function(tear_obj) {
     eccentricity <- tear_obj$eccentricity
   }
 
-  uhr <- as.numeric(tear_obj$lokalisation)
+  uhr <- as.numeric(tear_obj$clock)
   angle <- 2 * pi * (uhr %% 12) / 12
   cx <- 200 + eccentricity * sin(angle)
   cy <- 200 - eccentricity * cos(angle)
 
-  gr <- ifelse(tear_obj$groesse == "gross", 20, 12)
-  sr <- ifelse(tear_obj$groesse == "gross", 15, 8)
+  gr <- ifelse(tear_obj$size == "large", 20, 12)
+  sr <- ifelse(tear_obj$size == "large", 15, 8)
 
   rotation <- glue::glue("rotate({angle * 180 / pi}, {cx}, {cy})")
   path_d <- glue::glue("M{cx - sr},{cy} A{gr},{gr} 0 0,0 {cx + sr},{cy} A{sr},{sr} 0 0,1 {cx - sr},{cy} Z")

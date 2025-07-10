@@ -4,12 +4,13 @@ library(jsonlite)
 ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
-      textOutput("item_list"),
       actionButton("add_tear", "+ Hufeisenriss"),
       actionButton("add_detachment", "+ Netzhautablösung")
     ),
     mainPanel(
-      htmlOutput("svg_image")
+      htmlOutput("svg_image"),
+      br(),
+      textOutput("item_list")
     )
   )
 )
@@ -21,10 +22,11 @@ create_tear <- modalDialog(
     mainPanel(
       sliderInput("tear_clock", "Lokalisation (Uhrzeiten)",
                   min = 1, max = 12,
-                  step = 1, value = 6),
-      actionButton("save_tear", "Add")
+                  step = 1, value = 6)
     )
-  )
+  ),
+  footer = tagList(actionButton("save_tear", "Speichern"),
+                   modalButton("Abbrechen"))
 )
 
 create_detachment <- modalDialog(
@@ -34,10 +36,11 @@ create_detachment <- modalDialog(
     mainPanel(
       lapply(1:12, function (c) {
       sliderInput(glue::glue("detachment_clock{c}"), glue::glue("{c} Uhr"),
-                  min = 0, max = 180, step = 10, value = 180)}),
-      actionButton("save_detachment", "Add")
+                  min = 0, max = 180, step = 10, value = 180)})
     )
-  )
+  ),
+  footer = tagList(actionButton("save_detachment", "Speichern"),
+                   modalButton("Abbrechen"))
 )
 
 server <- function(input, output, session) {
@@ -47,10 +50,11 @@ server <- function(input, output, session) {
   observeEvent(input$save_tear, {
     fundus_items(
       c(
-        list(list(type = "tear", lokalisation = input$tear_clock, eccentricity = 95, groesse = "gross")),
+        list(list(type = "tear", clock = input$tear_clock, eccentricity = 95, size = "large")),
         fundus_items()
       )
     )
+    removeModal()
   })
 
   observeEvent(input$save_detachment, {
@@ -63,6 +67,7 @@ server <- function(input, output, session) {
         fundus_items()
       )
     )
+    removeModal()
   })
 
   observeEvent(input$add_tear, {
@@ -85,7 +90,7 @@ server <- function(input, output, session) {
   output$item_list <- renderText({
     req(!identical(fundus_items(), list()))
 
-    toJSON(fundus_items(), pretty = TRUE)
+    toJSON(fundus_items(), pretty = TRUE, flatten = TRUE)
     # try(purrr::map_chr(fundus_items(), function (x) return(x$type)) |>
     #       stringr::str_c(collapse = "\n"))
   })
