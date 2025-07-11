@@ -4,6 +4,7 @@ library(jsonlite)
 ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
+      radioButtons("eye", "Augenseite", choices = c("OD", "OS"), selected = "OD"),
       actionButton("add_tear", "+ Hufeisenriss"),
       actionButton("add_detachment", "+ Netzhautablösung")
     ),
@@ -80,8 +81,8 @@ server <- function(input, output, session) {
 
   output$svg_image <- renderUI({
 
-    stringr::str_c(ora_clip,
-                   fundus_template,
+    stringr::str_c(ifelse(input$eye == "OS", ora_clip_OS, ora_clip),
+                   ifelse(input$eye == "OS", left_eye(fundus_template), fundus_template),
                    render_objects(fundus_items())) |>
       fundus_image() |>
     HTML()
