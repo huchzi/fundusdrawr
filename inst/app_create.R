@@ -30,21 +30,35 @@ create_tear <- modalDialog(
                    modalButton("Abbrechen"))
 )
 
-create_detachment <- modalDialog(
+# create_detachment <- modalDialog(
+#   title = "Create detachment",
+#   sidebarLayout(
+#     sidebarPanel(),
+#     mainPanel(
+#       lapply(1:12, function (c) {
+#       sliderInput(glue::glue("detachment_clock{c}"), glue::glue("{c} Uhr"),
+#                   min = 0, max = 180, step = 10, value = 180)})
+#     )
+#   ),
+#   footer = tagList(actionButton("save_detachment", "Speichern"),
+#                    modalButton("Abbrechen"))
+# )
+
+create_detachment2 <- modalDialog(
   title = "Create detachment",
-  sidebarLayout(
-    sidebarPanel(),
-    mainPanel(
-      lapply(1:12, function (c) {
-      sliderInput(glue::glue("detachment_clock{c}"), glue::glue("{c} Uhr"),
-                  min = 0, max = 180, step = 10, value = 180)})
-    )
-  ),
+      plotOutput("detachment", click = "select_point"),
   footer = tagList(actionButton("save_detachment", "Speichern"),
                    modalButton("Abbrechen"))
 )
 
 server <- function(input, output, session) {
+
+  new_detachment_obj <- reactiveVal(list(type = "detachment",
+                                     inner_radii = rep(180, 12)))
+  reset_new_detachment_obj <- function() {
+    new_detachment_obj(list(type = "detachment",
+                            inner_radii = rep(180, 12)))
+  }
 
   fundus_items <- reactiveVal(list())
 
@@ -55,16 +69,14 @@ server <- function(input, output, session) {
         fundus_items()
       )
     )
+    reset_new_detachment_obj()
     removeModal()
   })
 
   observeEvent(input$save_detachment, {
-    radii <- sapply(1:12, function(x) { input[[glue::glue("detachment_clock{x}")]] })
-
-    print(radii)
     fundus_items(
       c(
-        list(list(type = "detachment", inner_radii = radii)),
+        list(new_detachment_obj()),
         fundus_items()
       )
     )
@@ -76,7 +88,7 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$add_detachment, {
-    showModal(create_detachment)
+    showModal(create_detachment2)
   })
 
   output$svg_image <- renderUI({
@@ -94,6 +106,27 @@ server <- function(input, output, session) {
     toJSON(fundus_items(), pretty = TRUE, flatten = TRUE)
     # try(purrr::map_chr(fundus_items(), function (x) return(x$type)) |>
     #       stringr::str_c(collapse = "\n"))
+  })
+
+  output$detachment <- renderPlot({
+    background_image <-
+      fundus_image(stringr::str_c(left_eye(fundus_template_plain), detachment(new_detachment_obj()))) |>
+      svg_to_grob()
+
+    ggplot(raster, aes(x = cx, y = cy)) +
+      annotation_custom(background_image) +
+      geom_point(alpha = .3) +
+      coord_equal() +
+      theme_void()
+  })
+
+  observeEvent(input$select_point, {
+    tab <- nearPoints(raster, input$select_point, xvar = "cx", yvar = "cy")
+    req(nrow(tab) > 0)
+
+    new_radii <- new_detachment_obj()
+    new_radii$inner_radii[tab$clock[1]] <- tab$ecc[1]
+    new_detachment_obj(new_radii)
   })
 
 }
