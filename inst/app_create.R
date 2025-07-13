@@ -21,9 +21,6 @@ ui <- fluidPage(
 
 modify_tear <- modalDialog(
   title = "Create tear",
-  sidebarLayout(
-    sidebarPanel(),
-    mainPanel(
       sliderInput("tear_clock", "Lokalisation (Uhrzeiten)",
                   min = 1, max = 12,
                   step = 1, value = 6),
@@ -31,10 +28,9 @@ modify_tear <- modalDialog(
                   choiceNames = c("groß", "mittel", "klein"),
                   choiceValues = c("large", "medium", "small"),
                   inline = TRUE),
-      sliderInput("tear_ecc", label = "Exzentrizität", min = 0, max = 120, step = 5, value = 95)
-    )
-  ),
+      sliderInput("tear_ecc", label = "Exzentrizität", min = 0, max = 120, step = 5, value = 95),
   footer = tagList(actionButton("save_tear", "Speichern"),
+                   actionButton("delete_tear", "Löschen"),
                    modalButton("Abbrechen"))
 )
 
@@ -43,6 +39,7 @@ modify_detachment <- modalDialog(
       selectInput("invert_selection", label = "Invert?", choices = c("yes", "no"), selected = "no"),
       plotOutput("detachment", click = "select_point"),
   footer = tagList(actionButton("save_detachment", "Speichern"),
+                   actionButton("delete_detachment", "Löschen"),
                    modalButton("Abbrechen"))
 )
 
@@ -50,12 +47,20 @@ server <- function(input, output, session) {
 
   fundus_items <- reactiveVal(list())
 
-  new_fundus_item <- reactiveVal(list(type = "detachment",
-                                     inner_radii = rep(180, 12)))
+  new_fundus_item <- reactiveVal(list())
 
-  reset_new_fundus_item <- function() {
+  remaining_fundus_items <- reactiveVal(list())
+
+  new_detachment <- function() {
     new_fundus_item(list(type = "detachment",
                             inner_radii = rep(180, 12)))
+  }
+
+  new_tear <- function() {
+    new_fundus_item(list(type = "tear",
+                         clock = input$tear_clock,
+                         eccentricity = input$tear_ecc,
+                         size = input$tear_size))
   }
 
   observeEvent(input$save_tear, {
@@ -69,7 +74,6 @@ server <- function(input, output, session) {
         fundus_items()
       ))
     )
-    reset_new_fundus_item()
     removeModal()
   })
 
@@ -77,17 +81,31 @@ server <- function(input, output, session) {
     fundus_items(
       sort_items(c(
         list(new_fundus_item()),
-        fundus_items()
+        remaining_fundus_items()
       ))
     )
     removeModal()
   })
 
+  observeEvent(input$delete_detachment, {
+    fundus_items(remaining_fundus_items())
+    removeModal()
+  })
+
+  observeEvent(input$delete_tear, {
+    fundus_items(remaining_fundus_items())
+    removeModal()
+  })
+
   observeEvent(input$add_tear, {
+    remaining_fundus_items(fundus_items())
+    new_tear()
     showModal(modify_tear)
   })
 
   observeEvent(input$add_detachment, {
+    remaining_fundus_items(fundus_items())
+    new_detachment()
     showModal(modify_detachment)
   })
 
@@ -97,11 +115,33 @@ server <- function(input, output, session) {
     for(i in 1:length(fundus_items())) {
       bttns <- list(bttns, actionButton(glue::glue("modify{i}"),
                                         HTML(fundus_image(
-                                          stringr::str_c(ifelse(input$eye == "OS", left_eye(fundus_template), fundus_template),
-                                          render_objects(fundus_items()[i])),
-                                                          scale_image = .1))))
+                                          stringr::str_c(ifelse(input$eye == "OS",
+                                                                left_eye(fundus_template),
+                                                                fundus_template),
+                                                         render_objects(fundus_items()[i])),
+                                          scale_image = .2))))
     }
     bttns
+  })
+
+  observe({
+    lapply(paste0("modify", 1:length(fundus_items())),
+           function(id) {
+             observeEvent(input[[id]], {
+               i <- as.integer(sub("modify", "", id))
+               print(i)
+               if(fundus_items()[[i]][["type"]] == "detachment") {
+                 new_fundus_item <- fundus_items()[i]
+                 remaining_fundus_items(fundus_items()[-i])
+                 showModal(modify_detachment)
+               }
+               if(fundus_items()[[i]][["type"]] == "tear") {
+                 new_fundus_item <- fundus_items()[i]
+                 remaining_fundus_items(fundus_items()[-i])
+                 showModal(modify_tear)
+               }
+             }, ignoreInit = TRUE)
+           })
   })
 
   output$svg_image <- renderUI({
@@ -109,28 +149,27 @@ server <- function(input, output, session) {
     stringr::str_c(ifelse(input$eye == "OS", ora_clip_OS, ora_clip),
                    ifelse(input$eye == "OS", left_eye(fundus_template), fundus_template),
                    render_objects(fundus_items())) |>
-      fundus_image(scale_image = 1.5) |>
+      fundus_image(scale_image = 1) |>
     HTML()
-  })
+
+   })
 
   output$item_list <- renderText({
     req(!identical(fundus_items(), list()))
 
     toJSON(fundus_items(), pretty = TRUE, flatten = TRUE)
-    # try(purrr::map_chr(fundus_items(), function (x) return(x$type)) |>
-    #       stringr::str_c(collapse = "\n"))
   })
 
   output$detachment <- renderPlot({
     background_image <-
-      fundus_image(stringr::str_c(left_eye(fundus_template_plain), detachment(new_fundus_item()))) |>
+      fundus_image(stringr::str_c(left_eye(fundus_template), detachment(new_fundus_item()))) |>
       svg_to_grob()
 
-    ggplot(raster, aes(x = cx, y = cy)) +
-      annotation_custom(background_image) +
-      geom_point(alpha = .3) +
-      coord_equal() +
-      theme_void()
+    ggplot2::ggplot(raster, ggplot2::aes(x = cx, y = cy)) +
+      ggplot2::annotation_custom(background_image) +
+      ggplot2::geom_point(alpha = .3) +
+      ggplot2::coord_equal() +
+      ggplot2::theme_void()
   })
 
   observeEvent(input$select_point, {

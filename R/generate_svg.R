@@ -7,6 +7,7 @@ fundus_image <- function(svg_content, scale_image = 1) {
   svg_footer <- '</svg>\n'
 
   stringr::str_c(svg_header, glue::glue('<g transform="scale({scale_image})">\n{svg_content}\n</g>'), svg_footer)
+  # stringr::str_c(svg_header, svg_content, svg_footer)
 }
 
 # Mirror a group in left by adding a transform
