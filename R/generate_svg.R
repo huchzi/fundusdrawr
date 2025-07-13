@@ -6,7 +6,10 @@ fundus_image <- function(svg_content, scale_image = 1) {
   svg_header <- glue::glue('<svg width="{w}" height="{h}" xmlns="http://www.w3.org/2000/svg">\n')
   svg_footer <- '</svg>\n'
 
-  stringr::str_c(svg_header, glue::glue('<g transform="scale({scale_image})">\n{svg_content}\n</g>'), svg_footer)
+  stringr::str_c(svg_header,
+                 '<rect width="100%" height="100%" fill="white"/>',
+                 glue::glue('<g transform="scale({scale_image})">\n{svg_content}\n</g>'),
+                 svg_footer)
   # stringr::str_c(svg_header, svg_content, svg_footer)
 }
 

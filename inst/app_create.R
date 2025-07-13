@@ -7,7 +7,9 @@ ui <- fluidPage(
     sidebarPanel(
       radioButtons("eye", "Augenseite", choices = c("OD", "OS"), selected = "OD"),
       actionButton("add_tear", "+ Hufeisenriss"),
-      actionButton("add_detachment", "+ Netzhautablösung")
+      actionButton("add_detachment", "+ Netzhautablösung"),
+      hr(),
+      downloadButton("download_word", "Skizze herunterladen")
     ),
     mainPanel(
       htmlOutput("svg_image"),
@@ -129,7 +131,6 @@ server <- function(input, output, session) {
            function(id) {
              observeEvent(input[[id]], {
                i <- as.integer(sub("modify", "", id))
-               print(i)
                if(fundus_items()[[i]][["type"]] == "detachment") {
                  new_fundus_item <- fundus_items()[i]
                  remaining_fundus_items(fundus_items()[-i])
@@ -180,6 +181,21 @@ server <- function(input, output, session) {
     new_radii$inner_radii[tab$clock[1]] <- tab$ecc[1]
     new_fundus_item(new_radii)
   })
+
+  output$download_word <- downloadHandler(
+    filename = function() {
+      paste("fundus_image.png")
+    },
+    content = function(file) {
+      stringr::str_c(ifelse(input$eye == "OS", ora_clip_OS, ora_clip),
+                     ifelse(input$eye == "OS", left_eye(fundus_template), fundus_template),
+                     render_objects(fundus_items())) |>
+        fundus_image(scale_image = 1) |>
+        charToRaw() |>
+        rsvg::rsvg_png(file = file, width = 400, height = 400)
+        # writeLines(con = file)
+    }
+  )
 
 }
 
