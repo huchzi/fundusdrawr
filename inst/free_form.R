@@ -17,13 +17,20 @@ toXY <- function(item) {
 }
 
 closed_form <- function(item) {
+
+  if (is.data.frame(item) && nrow(item) == 1) {
+    x1 <- item$cx[1]
+    y1 <- item$cy[1]
+    return(glue::glue('<circle cx="{x1}" cy="{y1}" r="3" fill="black"/>'))
+  }
+
   coord_list <- purrr::pmap(item |> toXY() |> tibble::tibble(),
                  function(x, y) glue::glue('{x},{y}'))
 
   path_string <- stringr::str_c("M ",
                                 paste(coord_list, collapse = " L "), " Z")
 
-  glue::glue('<path d="{path_string}" fill="blue" fill-opacity="0.5" clip-path="url(#oraClip)"/>')
+  glue::glue('<path d="{path_string}" stroke="blue" stroke-width="2" stroke-opacity="0.5" fill="blue" fill-opacity="0.5" clip-path="url(#oraClip)"/>')
 }
 
 # stringr::str_c(ora_clip,

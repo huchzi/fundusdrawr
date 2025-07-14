@@ -1,6 +1,6 @@
 library(shiny)
 library(jsonlite)
-devtools::load_all()
+# devtools::load_all()
 
 ui <- fluidPage(
   sidebarLayout(
@@ -116,7 +116,6 @@ server <- function(input, output, session) {
     modify_item <- new_fundus_item()
     req(nrow(modify_item$path) > 0)
     modify_item$path <- modify_item$path[-nrow(modify_item$path), ]
-    print(modify_item$path)
     new_fundus_item(modify_item)
   })
 
