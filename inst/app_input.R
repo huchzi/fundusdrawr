@@ -1,5 +1,6 @@
 library(shiny)
 library(here)
+library(ggplot2)
 i_am("inst/app_input.R")
 
 polar_to_cart <- function(df) {
@@ -9,26 +10,49 @@ polar_to_cart <- function(df) {
   df
 }
 
-raster <- data.frame(clock = rep(1:12, each=18), ecc = rep(1:18 * 10, 12))
-raster <- polar_to_cart(raster)
+cart_to_polar <- function(df) {
+  dx = df$cx - 200
+  dy = df$cy - 200
+  r = sqrt(dx^2 + dy^2)
+  theta_deg = (atan2(dy, dx) * 180 / pi) %% 360
+
+  df$clock <- theta_deg / 30
+  df$ecc <- r
+  df
+}
+
+raster <- data.frame(clock = integer(0), ecc = integer(0), cx = integer(0), cy = integer(0))
+for (xx in seq(0, 400, 10)) {
+  for (yy in seq(0, 400, 10)) {
+    raster <- rbind(raster, data.frame(clock = NA, ecc = NA, cx = xx, cy = yy))
+  }
+}
+# raster <- raster[sqrt((raster$cx- 200)^2 + (raster$cy - 200)^2) < 200, ]
+
+# raster <- data.frame(clock = rep(1:12, each=18), ecc = rep(1:18 * 10, 12))
+# raster <- polar_to_cart(raster)
 
 ui <- fluidPage(
   plotOutput("drawing", click = "select_point"),
-  tableOutput("data")
+  tableOutput("data"),
+  textOutput("svg_object")
 )
 
 server <- function(input, output, session) {
 
-  detachment_obj <- reactiveVal(list(type = "detachment",
-                                     inner_radii = rep(180, 12)))
+  form_obj <- reactiveVal(list(type = "detachment",
+                                     path = list()))
 
   observeEvent(input$select_point, {
     tab <- nearPoints(raster, input$select_point, xvar = "cx", yvar = "cy")
-    req(nrow(tab) > 0)
-
-    new_radii <- detachment_obj()
-    new_radii$inner_radii[tab$clock[1]] <- tab$ecc[1]
-    detachment_obj(new_radii)
+    new_obj <- form_obj()
+    new_obj$path <- rbind(new_obj$path, cart_to_polar(tab))
+    form_obj(new_obj)
+    # req(nrow(tab) > 0)
+    #
+    # new_radii <- detachment_obj()
+    # new_radii$inner_radii[tab$clock[1]] <- tab$ecc[1]
+    # detachment_obj(new_radii)
   })
 
   svg_to_grob <- function(x) {
@@ -39,18 +63,26 @@ server <- function(input, output, session) {
 
   output$drawing <- renderPlot({
     background_image <-
-      fundus_image(stringr::str_c(left_eye(fundus_template_plain), detachment(detachment_obj()))) |>
+      fundus_image(stringr::str_c(ora_clip_OS,
+                                  left_eye(fundus_template),
+                                  closed_form(form_obj()$path)
+                                  )) |>
       svg_to_grob()
 
     ggplot(raster, aes(x = cx, y = cy)) +
       annotation_custom(background_image) +
-      geom_point(alpha = .3) +
+      geom_point(alpha = .3, size = .2) +
       coord_equal() +
+      scale_y_reverse() +
       theme_void()
   })
 
   output$data <- renderTable({
-    nearPoints(raster, input$select_point, xvar = "cx", yvar = "cy")
+    form_obj()$path
+  })
+
+  output$svg_object <- renderText({
+    closed_form(form_obj()$path)
   })
 }
 

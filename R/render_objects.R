@@ -5,7 +5,7 @@ render_objects <- function(object_list) {
   render <- function(obj) {
     switch(obj$type,
            tear = tear(obj),
-           detachment = detachment(obj))
+           detachment = closed_form(obj$path))
   }
 
   purrr::map_chr(object_list, render) |>
