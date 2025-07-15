@@ -45,8 +45,6 @@ modify_detachment <- modalDialog(
 
 server <- function(input, output, session) {
 
-  raster <- reactiveVal(raster)
-
   fundus_items <- reactiveVal(list())
 
   new_fundus_item <- reactiveVal(list())
@@ -138,7 +136,7 @@ server <- function(input, output, session) {
            function(id) {
              observeEvent(input[[id]], {
                i <- as.integer(sub("modify", "", id))
-               new_fundus_item <- fundus_items()[i]
+               new_fundus_item(fundus_items()[[i]])
                remaining_fundus_items(fundus_items()[-i])
                if(fundus_items()[[i]][["type"]] == "detachment") {
                  showModal(modify_detachment)
@@ -171,7 +169,7 @@ server <- function(input, output, session) {
       fundus_image(stringr::str_c(left_eye(fundus_template), closed_form(new_fundus_item()$path))) |>
       svg_to_grob()
 
-    ggplot2::ggplot(raster(), ggplot2::aes(x = cx, y = cy)) +
+    ggplot2::ggplot(raster, ggplot2::aes(x = cx, y = cy)) +
       ggplot2::annotation_custom(background_image,
                                  xmin = 0, xmax = 400) +
       ggplot2::geom_point(alpha = .3, size = .5) +
@@ -181,14 +179,10 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$select_point, {
-    tab <- nearPoints(raster(), input$select_point, xvar = "cx", yvar = "cy")
+    tab <- nearPoints(raster, input$select_point, xvar = "cx", yvar = "cy")
     new_obj <- new_fundus_item()
     new_obj$path <- rbind(new_obj$path, tab)
     new_fundus_item(new_obj)
-
-    new_raster <- raster()
-    new_raster[new_raster$N %in% tab$N, "selected"] <- TRUE
-    raster(new_raster)
   })
 
   output$download_word <- downloadHandler(
