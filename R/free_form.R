@@ -1,5 +1,3 @@
-library(fundusdrawr)
-
 form_obj <- data.frame(n = 1:4,
                        clock = c(10.5, 1.5, 4.5, 7.5),
                        ecc = rep(50, 4))

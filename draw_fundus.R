@@ -1,6 +1,5 @@
 library(shiny)
-library(jsonlite)
-# devtools::load_all()
+devtools::load_all()
 
 ui <- fluidPage(
   sidebarLayout(
@@ -37,7 +36,7 @@ modify_tear <- modalDialog(
 
 modify_detachment <- modalDialog(
   title = "Create detachment",
-      plotOutput("detachment", click = "select_point"),
+  plotOutput("detachment", click = "select_point"),
   actionButton("delete_point", "Undo"),
   footer = tagList(actionButton("save_detachment", "Speichern"),
                    actionButton("delete_detachment", "Löschen"),
@@ -139,14 +138,12 @@ server <- function(input, output, session) {
            function(id) {
              observeEvent(input[[id]], {
                i <- as.integer(sub("modify", "", id))
+               new_fundus_item <- fundus_items()[i]
+               remaining_fundus_items(fundus_items()[-i])
                if(fundus_items()[[i]][["type"]] == "detachment") {
-                 new_fundus_item <- fundus_items()[i]
-                 remaining_fundus_items(fundus_items()[-i])
                  showModal(modify_detachment)
                }
                if(fundus_items()[[i]][["type"]] == "tear") {
-                 new_fundus_item <- fundus_items()[i]
-                 remaining_fundus_items(fundus_items()[-i])
                  showModal(modify_tear)
                }
              }, ignoreInit = TRUE)
@@ -192,9 +189,6 @@ server <- function(input, output, session) {
     new_raster <- raster()
     new_raster[new_raster$N %in% tab$N, "selected"] <- TRUE
     raster(new_raster)
-    # new_radii <- new_fundus_item()
-    # new_radii$inner_radii[tab$clock[1]] <- tab$ecc[1]
-    # new_fundus_item(new_radii)
   })
 
   output$download_word <- downloadHandler(
