@@ -166,8 +166,7 @@ server <- function(input, output, session) {
 
   output$detachment <- renderPlot({
     background_image <-
-      fundus_image(stringr::str_c(ifelse(input$eye == "OS", ora_clip_OS, ora_clip),
-                                  ifelse(input$eye == "OS", left_eye(fundus_template), fundus_template),
+      fundus_image(stringr::str_c(ifelse(input$eye == "OS", left_eye(fundus_template), fundus_template),
                                   closed_form(new_fundus_item()$path))) |>
       svg_to_grob()
 
