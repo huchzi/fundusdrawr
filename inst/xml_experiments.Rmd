@@ -8,7 +8,7 @@ output: html_notebook
 library(xml2)
 library(here)
 
-i_am("R/xml_experiments.Rmd")
+i_am("inst/xml_experiments.Rmd")
 
 ```
 
@@ -46,5 +46,13 @@ xml_add_child(test, lattice)
 xml_add_child(test, lattice_border) 
 test |> as.character() |> HTML()
 
+```
+
+```{r}
+
+test <- read_xml(here("inst", "fundusskizze.svg"))
+lattice <- equatorial_degeneration(from = 9, to = 11)
+xml_add_child(test, lattice) 
+test |> as.character() |> HTML()
 ```
 

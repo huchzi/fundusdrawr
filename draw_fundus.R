@@ -1,4 +1,5 @@
 library(shiny)
+library(jsonlite)
 devtools::load_all()
 
 ui <- fluidPage(
@@ -7,8 +8,10 @@ ui <- fluidPage(
       radioButtons("eye", "Augenseite", choices = c("OD", "OS"), selected = "OD"),
       actionButton("add_tear", "+ Hufeisenriss"),
       actionButton("add_detachment", "+ Netzhautablösung"),
+      actionButton("add_equatorial", "+ Äquatoriale Degeneration"),
       hr(),
-      downloadButton("download_word", "Skizze herunterladen")
+      downloadButton("download_word", "Skizze herunterladen"),
+      actionButton("show_json", "JSON-Code zeigen")
     ),
     mainPanel(
       htmlOutput("svg_image"),
@@ -34,6 +37,24 @@ modify_tear <- modalDialog(
   footer = tagList(
     actionButton("save_tear", "Speichern"),
     actionButton("delete_tear", "Löschen"),
+    modalButton("Abbrechen")
+  )
+)
+
+modify_equatorial <- modalDialog(
+  title = "Create equatorial degeneration",
+  sliderInput("from", "Von (Uhrzeiten)",
+    min = 1, max = 12,
+    step = .5, value = 6
+  ),
+  sliderInput("to", "Bis (Uhrzeiten)",
+    min = 1, max = 12,
+    step = .5, value = 6
+  ),
+  sliderInput("equatorial_ecc", label = "Exzentrizität", min = 0, max = 120, step = 5, value = 100),
+  footer = tagList(
+    actionButton("save_equatorial", "Speichern"),
+    actionButton("delete_equatorial", "Löschen"),
     modalButton("Abbrechen")
   )
 )
@@ -72,6 +93,14 @@ server <- function(input, output, session) {
     ))
   }
 
+  new_equatorial <- function() {
+    new_fundus_item(list(
+      type = "equatorial",
+      from = input$from,
+      to = input$to
+    ))
+  }
+
   observeEvent(input$save_tear, {
     fundus_items(
       sort_items(
@@ -87,6 +116,23 @@ server <- function(input, output, session) {
       )
     )
     removeModal()
+  })
+
+  observeEvent(input$save_equatorial, {
+    fundus_items(
+      sort_items(
+        c(
+          list(list(
+            type = "equatorial",
+            from = input$from,
+            to = input$to
+          )),
+          remaining_fundus_items()
+        )
+      )
+    )
+    removeModal()
+    print(fundus_items())
   })
 
   observeEvent(input$save_detachment, {
@@ -109,10 +155,21 @@ server <- function(input, output, session) {
     removeModal()
   })
 
+  observeEvent(input$delete_equatorial, {
+    fundus_items(remaining_fundus_items())
+    removeModal()
+  })
+
   observeEvent(input$add_tear, {
     remaining_fundus_items(fundus_items())
     new_tear()
     showModal(modify_tear)
+  })
+
+  observeEvent(input$add_equatorial, {
+    remaining_fundus_items(fundus_items())
+    new_equatorial()
+    showModal(modify_equatorial)
   })
 
   observeEvent(input$add_detachment, {
@@ -137,8 +194,8 @@ server <- function(input, output, session) {
         HTML(fundus_image(
           stringr::str_c(
             ifelse(input$eye == "OS",
-              left_eye(fundus_template),
-              fundus_template
+              left_eye(fundusdrawr::fundus_template),
+              fundusdrawr::fundus_template
             ),
             render_objects(fundus_items()[i])
           ),
@@ -164,6 +221,9 @@ server <- function(input, output, session) {
             if (fundus_items()[[i]][["type"]] == "tear") {
               showModal(modify_tear)
             }
+            if (fundus_items()[[i]][["type"]] == "equatorial") {
+              showModal(modify_equatorial)
+            }
           },
           ignoreInit = TRUE
         )
@@ -174,7 +234,7 @@ server <- function(input, output, session) {
   output$svg_image <- renderUI({
     stringr::str_c(
       ifelse(input$eye == "OS", ora_clip_OS, ora_clip),
-      ifelse(input$eye == "OS", left_eye(fundus_template), fundus_template),
+      ifelse(input$eye == "OS", left_eye(fundusdrawr::fundus_template), fundusdrawr::fundus_template),
       render_objects(fundus_items())
     ) |>
       fundus_image(scale_image = 1.3) |>
@@ -184,7 +244,7 @@ server <- function(input, output, session) {
   output$detachment <- renderPlot({
     background_image <-
       fundus_image(stringr::str_c(
-        ifelse(input$eye == "OS", left_eye(fundus_template), fundus_template),
+        ifelse(input$eye == "OS", left_eye(fundusdrawr::fundus_template), fundusdrawr::fundus_template),
         closed_form(new_fundus_item()$path)
       )) |>
       svg_to_grob()
@@ -206,6 +266,10 @@ server <- function(input, output, session) {
     new_fundus_item(new_obj)
   })
 
+  observeEvent(input$show_json, {
+    showModal(modalDialog(p(toJSON(fundus_items(), pretty = TRUE))))
+  })
+
   output$download_word <- downloadHandler(
     filename = function() {
       paste("fundus_image.png")
@@ -213,7 +277,7 @@ server <- function(input, output, session) {
     content = function(file) {
       stringr::str_c(
         ifelse(input$eye == "OS", ora_clip_OS, ora_clip),
-        ifelse(input$eye == "OS", left_eye(fundus_template), fundus_template),
+        ifelse(input$eye == "OS", left_eye(fundusdrawr::fundus_template), fundusdrawr::fundus_template),
         render_objects(fundus_items())
       ) |>
         fundus_image(scale_image = 1) |>
