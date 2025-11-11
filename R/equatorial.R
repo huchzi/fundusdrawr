@@ -6,15 +6,13 @@ equatorial_degeneration <- function(obj) {
   eccentricity <- 87
   coords <- clock_to_xy(c(from, to), rep(eccentricity, 2))
 
-  lattice <- glue::glue('<svg>
-                        <defs> <path id="bogen" d="M {coords$x[1]},{coords$y[1]}
+  lattice <- glue::glue('<defs> <path id="bogen" d="M {coords$x[1]},{coords$y[1]}
                         A {eccentricity},{eccentricity} 0 0,1 {coords$x[2]},{coords$y[2]}" />
                         </defs>
                         <text font-size="20" fill="black">
                         <textPath href="#bogen">XXXXXXXXXXXXXXXXX</textPath>
                         </text>
-                        <path href="#bogen" stroke="black"/>
-                        </svg>')
+                        <path href="#bogen" stroke="black"/>')
 
   coords <- clock_to_xy(
     c(
@@ -27,7 +25,7 @@ equatorial_degeneration <- function(obj) {
     )
   )
 
-  lattice_border <- glue::glue('<svg> <path d="
+  lattice_border <- glue::glue('<path d="
 M {coords$x[1]},{coords$y[1]}
 A 85,85 0 0,1 {coords$x[2]},{coords$y[2]}
 A 5,5 0 0,0 {coords$x[4]},{coords$y[4]}
@@ -36,7 +34,6 @@ A 5,5 0 0,0 {coords$x[1]},{coords$y[1]}
 "
 fill="none"
 stroke="black"
-stroke-width="2"/>
-</svg>')
+stroke-width="2"/>')
   return(stringr::str_c(lattice, lattice_border))
 }

@@ -6,6 +6,10 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       radioButtons("eye", "Augenseite", choices = c("OD", "OS"), selected = "OD"),
+      hr(),
+      textAreaInput("natural_language", "Fundusbeschreibung in natürlicher Sprache"),
+      actionButton("from_natural_language", "Erstelle aus Sprache"),
+      hr(),
       actionButton("add_tear", "+ Hufeisenriss"),
       actionButton("add_detachment", "+ Netzhautablösung"),
       actionButton("add_equatorial", "+ Äquatoriale Degeneration"),
@@ -185,22 +189,63 @@ server <- function(input, output, session) {
     new_fundus_item(modify_item)
   })
 
+  # Parse natural language to JSON
+  observeEvent(input$from_natural_language, {
+    token <- Sys.getenv("API_TOKEN") # oder GITHUB_PAT
+    endpoint <- "https://models.github.ai/inference/chat/completions"
+    model <- "meta/Llama-4-Scout-17B-16E-Instruct"
+
+    body <- list(
+      messages = list(
+        list(role = "system", content = "You are a helpful assistant."),
+        list(role = "user", content = "What is the capital of France?")
+      ),
+      temperature = 1.0,
+      top_p = 1.0,
+      max_tokens = 1000,
+      model = model
+    )
+
+    resp <- httr2::request(endpoint) |>
+      httr2::req_method("POST") |>
+      httr2::req_headers(
+        "Authorization" = paste("Bearer", token),
+        "Accept" = "application/json",
+        "Content-Type" = "application/json",
+        "X-GitHub-Api-Version" = "2022-11-28"
+      ) |>
+      httr2::req_body_json(body) |>
+      httr2::req_perform()
+
+    if (httr2::resp_status(resp) >= 400) {
+      stop("API Error: ", httr2::resp_status_desc(resp))
+    }
+
+    print(resp)
+    data <- httr2::resp_body_json(resp)
+    print(data$choices[[1]]$message$content)
+  })
+
+  # Create thumbnails for preview
   output$modify_selector <- renderUI({
     req(length(fundus_items()) > 0)
     bttns <- list()
     for (i in 1:length(fundus_items())) {
       bttns <- list(bttns, actionButton(
         glue::glue("modify{i}"),
-        HTML(fundus_image(
-          stringr::str_c(
-            ifelse(input$eye == "OS",
-              left_eye(fundusdrawr::fundus_template),
-              fundusdrawr::fundus_template
-            ),
-            render_objects(fundus_items()[i])
+        stringr::str_c(
+          ifelse(input$eye == "OS",
+            left_eye(fundusdrawr::fundus_template),
+            fundusdrawr::fundus_template
           ),
-          scale_image = .2
-        ))
+          ifelse(input$eye == "OS",
+            ora_clip_OS,
+            ora_clip
+          ),
+          render_objects(fundus_items()[i])
+        ) |>
+          fundus_image(scale_image = .2) |>
+          HTML()
       ))
     }
     bttns
@@ -267,7 +312,7 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$show_json, {
-    showModal(modalDialog(p(toJSON(fundus_items(), pretty = TRUE))))
+    showModal(modalDialog(p(toJSON(fundus_items(), pretty = TRUE, auto_unbox = TRUE))))
   })
 
   output$download_word <- downloadHandler(
