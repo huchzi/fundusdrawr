@@ -193,12 +193,13 @@ server <- function(input, output, session) {
   observeEvent(input$from_natural_language, {
     token <- Sys.getenv("API_TOKEN") # oder GITHUB_PAT
     endpoint <- "https://models.github.ai/inference/chat/completions"
-    model <- "meta/Llama-4-Scout-17B-16E-Instruct"
+    # model <- "meta/Llama-4-Scout-17B-16E-Instruct"
+    model <- "openai/gpt-4.1-mini"
 
     body <- list(
       messages = list(
-        list(role = "system", content = "You are a helpful assistant."),
-        list(role = "user", content = "What is the capital of France?")
+        list(role = "system", content = role),
+        list(role = "user", content = paste(prompt, input$natural_language))
       ),
       temperature = 1.0,
       top_p = 1.0,
@@ -206,24 +207,38 @@ server <- function(input, output, session) {
       model = model
     )
 
-    resp <- httr2::request(endpoint) |>
-      httr2::req_method("POST") |>
-      httr2::req_headers(
-        "Authorization" = paste("Bearer", token),
-        "Accept" = "application/json",
-        "Content-Type" = "application/json",
-        "X-GitHub-Api-Version" = "2022-11-28"
-      ) |>
-      httr2::req_body_json(body) |>
-      httr2::req_perform()
+    try(
+      resp <- httr2::request(endpoint) |>
+        httr2::req_method("POST") |>
+        httr2::req_headers(
+          "Authorization" = paste("Bearer", token),
+          "Accept" = "application/json",
+          "Content-Type" = "application/json",
+          "X-GitHub-Api-Version" = "2022-11-28"
+        ) |>
+        httr2::req_body_json(body) |>
+        httr2::req_error(is_error = \(resp) FALSE) |>
+        httr2::req_perform()
+    )
 
     if (httr2::resp_status(resp) >= 400) {
-      stop("API Error: ", httr2::resp_status_desc(resp))
+      if (httr2::resp_status(resp) == 429) {
+        showNotification(
+          "Zu viele Anfragen an Server. Dieser Prototyp verwendet ein kostenloses LLM."
+        )
+      } else {
+        showNotification(
+          paste("Fehler bei Verbindung zum LLM. API Error: ", httr2::resp_status_desc(resp)),
+          type = "error"
+        )
+      }
+    } else {
+      data <- httr2::resp_body_json(resp)
+      data$choices[[1]]$message$content |>
+        stringr::str_remove_all("^```json\\s*|\\s*```$") |>
+        fromJSON(simplifyDataFrame = FALSE) |>
+        fundus_items()
     }
-
-    print(resp)
-    data <- httr2::resp_body_json(resp)
-    print(data$choices[[1]]$message$content)
   })
 
   # Create thumbnails for preview

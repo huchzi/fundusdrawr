@@ -15,10 +15,12 @@ License: What license is it under?
 Encoding: UTF-8
 LazyData: true
 Imports: 
+    ggplot2,
     glue,
     httr,
     httr2,
     purrr,
+    rsvg,
     stringr
 Suggests: 
     testthat (>= 3.0.0)
