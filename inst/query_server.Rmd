@@ -1,0 +1,89 @@
+---
+title: "SVG vom Haskell-API abrufen"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+# Pakete laden
+library(httr)
+library(jsonlite)
+library(rsvg)
+
+url <- "https://smallhaskellproject.fly.dev/trigger"
+url <- "https://haskell-fundusskizze-588395464083.herokuapp.com/trigger"
+url <- "https://sturdy-spoon-v6rrvr4wv4qfx95-8080.app.github.dev/trigger"
+
+```
+
+# Erzeuge JSON
+
+```{r}
+
+data_list <- list(
+  eyeSide = "LeftEye",
+  equatorial = list(
+    list(
+      equType = "lattice",
+      equClock = 6,
+      equEccentricity = 90,
+      equAngle = 3
+    )
+  ),
+  breaks = list(
+    list(
+      breakType = "horseshoe",
+      breakClock = 2,
+      breakEccentricity = 90
+    ),
+    list(
+      breakType = "horseshoe",
+      breakClock = 1,
+      breakEccentricity = 90
+    )
+  ),
+  detachments = list(
+    list(
+      detachmentType = "collateral",
+      primaryBreak = list(
+        breakType = "horseshoe",
+        breakClock = 2,
+        breakEccentricity = 90
+      ),
+      radius = 100
+    )
+  ),
+  metadata = list(examDate = "2025-12-24")
+)
+
+json_data <- toJSON(data_list, auto_unbox = TRUE, pretty = TRUE)
+
+```
+
+# Zeige SVG
+
+```{r}
+
+response <- POST(
+url,
+body = json_data,
+encode = "json",
+content_type_json()
+)
+
+svg_content <- content(response, "text", encoding = "UTF-8")
+
+htmltools::HTML(svg_content)
+
+# SVG-Datei in PNG umwandeln
+rsvg_png(
+  charToRaw(svg_content),     # oder "fundusskizze.svg"
+  file = "fundusskizze.png",
+  width = 1200,               # Auflösung anpassen
+  height = 1200
+)
+
+```
+
+![](fundusskizze.png)
