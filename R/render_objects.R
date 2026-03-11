@@ -5,12 +5,11 @@ render_objects <- function(object_list) {
 
   render <- function(obj) {
     switch(obj$type,
-      tear = tear(obj),
-      equatorial = equatorial_degeneration(obj),
-      detachment = closed_form(obj$path)
+      tear = tear(obj), # |> read_xml(),
+      equatorial = equatorial_degeneration(obj), # |> read_xml(),
+      detachment = closed_form(obj$path) # |> read_xml()
     )
   }
 
-  purrr::map_chr(object_list, render) |>
-    stringr::str_c(collapse = "\n")
+  purrr::map_chr(object_list, render)
 }

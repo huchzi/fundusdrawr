@@ -1,5 +1,6 @@
 library(shiny)
 library(jsonlite)
+library(xml2)
 devtools::load_all()
 
 ui <- fluidPage(
@@ -294,7 +295,10 @@ server <- function(input, output, session) {
   output$svg_image <- renderUI({
     stringr::str_c(
       ifelse(input$eye == "OS", ora_clip_OS, ora_clip),
-      ifelse(input$eye == "OS", left_eye(fundusdrawr::fundus_template), fundusdrawr::fundus_template),
+      ifelse(input$eye == "OS",
+        left_eye(fundusdrawr::fundus_template),
+        fundusdrawr::fundus_template
+      ),
       render_objects(fundus_items())
     ) |>
       fundus_image(scale_image = 1.3) |>

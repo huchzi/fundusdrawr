@@ -12,8 +12,8 @@ library(jsonlite)
 library(rsvg)
 
 url <- "https://smallhaskellproject.fly.dev/trigger"
-url <- "https://haskell-fundusskizze-588395464083.herokuapp.com/trigger"
-url <- "https://sturdy-spoon-v6rrvr4wv4qfx95-8080.app.github.dev/trigger"
+# url <- "https://haskell-fundusskizze-588395464083.herokuapp.com/trigger"
+# url <- "https://sturdy-spoon-v6rrvr4wv4qfx95-8080.app.github.dev/trigger"
 
 ```
 
@@ -54,6 +54,7 @@ data_list <- list(
       radius = 100
     )
   ),
+  ffDetachments = list(list(coords = list(c(12, 90)))),
   metadata = list(examDate = "2025-12-24")
 )
 

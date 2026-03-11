@@ -1,6 +1,5 @@
 #' @export
 tear <- function(tear_obj) {
-
   if (is.null(tear_obj$eccentricity)) {
     eccentricity <- 95
   } else {
