@@ -85,7 +85,8 @@ server <- function(input, output, session) {
   new_detachment <- function() {
     new_fundus_item(list(
       type = "detachment",
-      inner_radii = rep(180, 12)
+      inner_radii = rep(180, 12),
+      path = ""
     ))
   }
 
@@ -249,19 +250,7 @@ server <- function(input, output, session) {
     for (i in 1:length(fundus_items())) {
       bttns <- list(bttns, actionButton(
         glue::glue("modify{i}"),
-        stringr::str_c(
-          ifelse(input$eye == "OS",
-            left_eye(fundusdrawr::fundus_template),
-            fundusdrawr::fundus_template
-          ),
-          ifelse(input$eye == "OS",
-            ora_clip_OS,
-            ora_clip
-          ),
-          render_objects(fundus_items()[i])
-        ) |>
-          fundus_image(scale_image = .2) |>
-          HTML()
+        fundus_image(input$eye, fundus_items()[i], .2) |> HTML()
       ))
     }
     bttns
@@ -293,24 +282,13 @@ server <- function(input, output, session) {
   })
 
   output$svg_image <- renderUI({
-    stringr::str_c(
-      ifelse(input$eye == "OS", ora_clip_OS, ora_clip),
-      ifelse(input$eye == "OS",
-        left_eye(fundusdrawr::fundus_template),
-        fundusdrawr::fundus_template
-      ),
-      render_objects(fundus_items())
-    ) |>
-      fundus_image(scale_image = 1.3) |>
-      HTML()
+    fundus_image(input$eye, fundus_items(), 1.3) |> HTML()
   })
 
   output$detachment <- renderPlot({
+
     background_image <-
-      fundus_image(stringr::str_c(
-        ifelse(input$eye == "OS", left_eye(fundusdrawr::fundus_template), fundusdrawr::fundus_template),
-        closed_form(new_fundus_item()$path)
-      )) |>
+      fundus_image(input$eye == "OS", list(new_fundus_item())) |>
       svg_to_grob()
 
     ggplot2::ggplot(raster, ggplot2::aes(x = cx, y = cy)) +

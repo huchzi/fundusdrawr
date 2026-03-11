@@ -1,10 +1,19 @@
 # Generate the SVG file from a content string
 #' @export
-fundus_image <- function(svg_content, scale_image = 1) {
+fundus_image <- function(eye_side, objects, scale_image = 1) {
   h <- 400 * scale_image
   w <- 400 * scale_image
   svg_header <- glue::glue('<svg width="{w}" height="{h}" xmlns="http://www.w3.org/2000/svg">\n')
   svg_footer <- "</svg>\n"
+
+  fundus_template_xml <- read_xml("data/fundus_template.txt")
+
+  if (eye_side == "OS") xml_attr(fundus_template_xml, "transform") <- "translate(400 0) scale(-1 1)"
+
+  for (elem in render_objects(objects)) {
+    xml_add_child(fundus_template_xml, elem)
+  }
+  svg_content <- as.character(fundus_template_xml)
 
   stringr::str_c(
     svg_header,

@@ -18,7 +18,7 @@ toXY <- function(item) {
 
 closed_form <- function(item, radius = 10) {
   if (!is.data.frame(item)) {
-    return("")
+    return("<g></g>")
   }
 
   if (is.data.frame(item) && nrow(item) == 1) {
@@ -74,5 +74,5 @@ closed_form <- function(item, radius = 10) {
 
   path_string <- paste(path_commands, collapse = " ") |> paste("Z")
 
-  glue::glue('<path d="{path_string}" stroke="blue" stroke-width="2" fill="blue" fill-opacity="0.5" stroke-linejoin="round" clip-path="url(#oraClip)"/>')
+  glue::glue('<g><path d="{path_string}" stroke="blue" stroke-width="2" fill="blue" fill-opacity="0.5" stroke-linejoin="round" clip-path="url(#oraClip)"/></g>')
 }
