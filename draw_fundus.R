@@ -85,8 +85,7 @@ server <- function(input, output, session) {
   new_detachment <- function() {
     new_fundus_item(list(
       type = "detachment",
-      inner_radii = rep(180, 12),
-      path = ""
+      inner_radii = rep(180, 12)
     ))
   }
 
@@ -250,7 +249,7 @@ server <- function(input, output, session) {
     for (i in 1:length(fundus_items())) {
       bttns <- list(bttns, actionButton(
         glue::glue("modify{i}"),
-        fundus_image(input$eye, fundus_items()[i], .2) |> HTML()
+        fundus_image(input$eye, fundus_items()[i], clip = TRUE, scale_image = .2) |> HTML()
       ))
     }
     bttns
@@ -282,13 +281,12 @@ server <- function(input, output, session) {
   })
 
   output$svg_image <- renderUI({
-    fundus_image(input$eye, fundus_items(), 1.3) |> HTML()
+    fundus_image(input$eye, fundus_items(), clip = TRUE, scale_image = 1.3) |> HTML()
   })
 
   output$detachment <- renderPlot({
-
     background_image <-
-      fundus_image(input$eye == "OS", list(new_fundus_item())) |>
+      fundus_image(input$eye == "OS", list(new_fundus_item()), clip = FALSE, scale_image = 1) |>
       svg_to_grob()
 
     ggplot2::ggplot(raster, ggplot2::aes(x = cx, y = cy)) +

@@ -1,26 +1,19 @@
 # Generate the SVG file from a content string
 #' @export
-fundus_image <- function(eye_side, objects, scale_image = 1) {
+fundus_image <- function(eye_side, objects, clip = TRUE, scale_image = 1) {
   h <- 400 * scale_image
   w <- 400 * scale_image
-  svg_header <- glue::glue('<svg width="{w}" height="{h}" xmlns="http://www.w3.org/2000/svg">\n')
-  svg_footer <- "</svg>\n"
 
-  fundus_template_xml <- read_xml("data/fundus_template.txt")
+  fundus_template_xml <- create_template(eye_side, clip = clip, scale_image)
 
-  if (eye_side == "OS") xml_attr(fundus_template_xml, "transform") <- "translate(400 0) scale(-1 1)"
+  lesions <- xml_find_first(fundus_template_xml, ".//g[@id='lesions']")
 
   for (elem in render_objects(objects)) {
-    xml_add_child(fundus_template_xml, elem)
+    xml_add_child(lesions, elem)
   }
-  svg_content <- as.character(fundus_template_xml)
+  xml_code <- as.character(fundus_template_xml)
 
-  stringr::str_c(
-    svg_header,
-    '<rect width="100%" height="100%" fill="white"/>',
-    glue::glue('<g transform="scale({scale_image})">\n{svg_content}\n</g>'),
-    svg_footer
-  )
+  return(xml_code)
 }
 
 # Mirror a group in left by adding a transform
