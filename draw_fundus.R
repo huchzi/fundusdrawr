@@ -286,7 +286,7 @@ server <- function(input, output, session) {
 
   output$detachment <- renderPlot({
     background_image <-
-      fundus_image(input$eye == "OS", list(new_fundus_item()), clip = FALSE, scale_image = 1) |>
+      fundus_image(input$eye, append(fundus_items(), list(new_fundus_item())), clip = FALSE, scale_image = 1) |>
       svg_to_grob()
 
     ggplot2::ggplot(raster, ggplot2::aes(x = cx, y = cy)) +
@@ -315,12 +315,7 @@ server <- function(input, output, session) {
       paste("fundus_image.png")
     },
     content = function(file) {
-      stringr::str_c(
-        ifelse(input$eye == "OS", ora_clip_OS, ora_clip),
-        ifelse(input$eye == "OS", left_eye(fundusdrawr::fundus_template), fundusdrawr::fundus_template),
-        render_objects(fundus_items())
-      ) |>
-        fundus_image(scale_image = 1) |>
+      fundus_image(input$eye, fundus_items(), clip = TRUE, scale_image = 1) |>
         charToRaw() |>
         rsvg::rsvg_png(file = file, width = 400, height = 400)
       # writeLines(con = file)

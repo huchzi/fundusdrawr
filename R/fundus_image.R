@@ -16,12 +16,14 @@ fundus_image <- function(eye_side, objects, clip = TRUE, scale_image = 1) {
   return(xml_code)
 }
 
-# Mirror a group in left by adding a transform
-mirror_group <- function(content) {
-  glue::glue('<g transform="translate(400,0) scale(-1,1)">\n{content}</g>\n')
-}
+render_objects <- function(object_list) {
+  render <- function(obj) {
+    render_function <- get(obj$type, mode = "function")
 
-mirror_left_eyes <- function(content, list_data) {
-  is_left <- tolower(list_data$seite %||% "rechts") == "links"
-  ifelse(is_left, mirror_group(content), content)
+    obj |>
+      render_function() |>
+      read_xml()
+  }
+
+  purrr::map(object_list, render)
 }

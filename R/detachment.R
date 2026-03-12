@@ -16,7 +16,8 @@ toXY <- function(item) {
   data.frame(x, y)
 }
 
-closed_form <- function(item, radius = 10, clip = TRUE) {
+detachment <- function(obj, radius = 10, clip = TRUE) {
+  item <- obj$path
   if (!is.data.frame(item)) {
     return("<g></g>")
   }

@@ -1,4 +1,4 @@
-equatorial_degeneration <- function(obj) {
+equatorial <- function(obj) {
   type <- obj$type
   from <- obj$from
   to <- obj$to
