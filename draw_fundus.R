@@ -3,6 +3,11 @@ library(jsonlite)
 library(xml2)
 devtools::load_all()
 
+element_types <- c("detachment", "tear", "equatorial")
+
+# UI ----------------------------------------------------------------------
+
+
 ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
@@ -26,86 +31,104 @@ ui <- fluidPage(
   )
 )
 
-modify_tear <- modalDialog(
-  title = "Create tear",
-  sliderInput("tear_clock", "Lokalisation (Uhrzeiten)",
-    min = 1, max = 12,
-    step = .5, value = 6
-  ),
-  radioButtons("tear_size", "Größe",
-    choiceNames = c("groß", "mittel", "klein"),
-    choiceValues = c("large", "medium", "small"),
-    selected = "medium",
-    inline = TRUE
-  ),
-  sliderInput("tear_ecc", label = "Exzentrizität", min = 0, max = 120, step = 5, value = 100),
-  footer = tagList(
-    actionButton("save_tear", "Speichern"),
-    actionButton("delete_tear", "Löschen"),
-    modalButton("Abbrechen")
-  )
-)
 
-modify_equatorial <- modalDialog(
-  title = "Create equatorial degeneration",
-  sliderInput("from", "Von (Uhrzeiten)",
-    min = 1, max = 12,
-    step = .5, value = 6
-  ),
-  sliderInput("to", "Bis (Uhrzeiten)",
-    min = 1, max = 12,
-    step = .5, value = 6
-  ),
-  sliderInput("equatorial_ecc", label = "Exzentrizität", min = 0, max = 120, step = 5, value = 100),
-  footer = tagList(
-    actionButton("save_equatorial", "Speichern"),
-    actionButton("delete_equatorial", "Löschen"),
-    modalButton("Abbrechen")
+# ModalDialogs ------------------------------------------------------------
+modify_tear <- function(tear_item) {
+  modalDialog(
+    title = "Create tear",
+    sliderInput("tear_clock", "Lokalisation (Uhrzeiten)",
+      min = 1, max = 12,
+      step = .5, value = tear_item$clock
+    ),
+    radioButtons("tear_size", "Größe",
+      choiceNames = c("groß", "mittel", "klein"),
+      choiceValues = c("large", "medium", "small"),
+      selected = tear_item$size,
+      inline = TRUE
+    ),
+    sliderInput("tear_ecc", label = "Exzentrizität", min = 0, max = 120, step = 5, value = tear_item$eccentricity),
+    footer = tagList(
+      actionButton("save_tear", "Speichern"),
+      actionButton("delete_tear", "Löschen"),
+      modalButton("Abbrechen")
+    )
   )
-)
+}
 
-modify_detachment <- modalDialog(
-  title = "Create detachment",
-  plotOutput("detachment", click = "select_point"),
-  actionButton("delete_point", "Undo"),
-  footer = tagList(
-    actionButton("save_detachment", "Speichern"),
-    actionButton("delete_detachment", "Löschen"),
-    modalButton("Abbrechen")
+modify_equatorial <- function(equatorial_item) {
+  modalDialog(
+    title = "Create equatorial degeneration",
+    sliderInput("from", "Von (Uhrzeiten)",
+      min = 1, max = 12,
+      step = .5, value = equatorial_item$from
+    ),
+    sliderInput("to", "Bis (Uhrzeiten)",
+      min = 1, max = 12,
+      step = .5, value = equatorial_item$to
+    ),
+    sliderInput("equatorial_ecc", label = "Exzentrizität", min = 0, max = 120, step = 5, value = 100),
+    footer = tagList(
+      actionButton("save_equatorial", "Speichern"),
+      actionButton("delete_equatorial", "Löschen"),
+      modalButton("Abbrechen")
+    )
   )
-)
+}
+
+modify_detachment <- function(detachment_item) {
+  modalDialog(
+    title = "Create detachment",
+    plotOutput("detachment", click = "select_point"),
+    actionButton("delete_point", "Undo"),
+    footer = tagList(
+      actionButton("save_detachment", "Speichern"),
+      actionButton("delete_detachment", "Löschen"),
+      modalButton("Abbrechen")
+    )
+  )
+}
+
+# Server ------------------------------------------------------------------
+
 
 server <- function(input, output, session) {
   fundus_items <- reactiveVal(list())
-
   new_fundus_item <- reactiveVal(list())
-
   remaining_fundus_items <- reactiveVal(list())
 
-  new_detachment <- function() {
-    new_fundus_item(list(
-      type = "detachment",
-      inner_radii = rep(180, 12)
-    ))
-  }
 
-  new_tear <- function() {
-    new_fundus_item(list(
-      type = "tear",
-      clock = input$tear_clock,
-      eccentricity = input$tear_ecc,
-      size = input$tear_size
-    ))
-  }
+  # Default element items -------------------------------------------------------
+  default_tear <- list(
+    type = "tear",
+    clock = 6,
+    eccentricity = 100,
+    size = "medium"
+  )
 
-  new_equatorial <- function() {
-    new_fundus_item(list(
-      type = "equatorial",
-      from = input$from,
-      to = input$to
-    ))
-  }
+  default_detachment <- list(
+    type = "detachment",
+    path = NULL
+  )
 
+  default_equatorial <- list(
+    type = "equatorial",
+    from = 11,
+    to = 1
+  )
+
+  # Create element -------------------------------------------------------------
+  lapply(element_types, function(elem_type) {
+    observeEvent(input[[paste0("add_", elem_type)]], {
+      remaining_fundus_items(fundus_items())
+      this_new_item <- get(paste0("default_", elem_type))
+      print(this_new_item)
+      new_fundus_item(this_new_item)
+      modal <- get(paste0("modify_", elem_type), mode = "function")
+      showModal(modal(this_new_item))
+    })
+  })
+
+  # Add element to list ------------------------------------------------------------
   observeEvent(input$save_tear, {
     fundus_items(
       sort_items(
@@ -150,46 +173,16 @@ server <- function(input, output, session) {
     removeModal()
   })
 
-  observeEvent(input$delete_detachment, {
-    fundus_items(remaining_fundus_items())
-    removeModal()
+
+  # Delete element ----------------------------------------------------------
+  lapply(element_types, function(btn) {
+    observeEvent(input[[paste0("delete_", btn)]], {
+      fundus_items(remaining_fundus_items())
+      removeModal()
+    })
   })
 
-  observeEvent(input$delete_tear, {
-    fundus_items(remaining_fundus_items())
-    removeModal()
-  })
-
-  observeEvent(input$delete_equatorial, {
-    fundus_items(remaining_fundus_items())
-    removeModal()
-  })
-
-  observeEvent(input$add_tear, {
-    remaining_fundus_items(fundus_items())
-    new_tear()
-    showModal(modify_tear)
-  })
-
-  observeEvent(input$add_equatorial, {
-    remaining_fundus_items(fundus_items())
-    new_equatorial()
-    showModal(modify_equatorial)
-  })
-
-  observeEvent(input$add_detachment, {
-    remaining_fundus_items(fundus_items())
-    new_detachment()
-    showModal(modify_detachment)
-  })
-
-  observeEvent(input$delete_point, {
-    modify_item <- new_fundus_item()
-    req(nrow(modify_item$path) > 0)
-    modify_item$path <- modify_item$path[-nrow(modify_item$path), ]
-    new_fundus_item(modify_item)
-  })
-
+  # LLM ---------------------------------------------------------------------
   # Parse natural language to JSON
   observeEvent(input$from_natural_language, {
     token <- Sys.getenv("API_TOKEN") # oder GITHUB_PAT
@@ -242,7 +235,8 @@ server <- function(input, output, session) {
     }
   })
 
-  # Create thumbnails for preview
+
+  # Thumbnails --------------------------------------------------------------
   output$modify_selector <- renderUI({
     req(length(fundus_items()) > 0)
     bttns <- list()
@@ -264,15 +258,10 @@ server <- function(input, output, session) {
             i <- as.integer(sub("modify", "", id))
             new_fundus_item(fundus_items()[[i]])
             remaining_fundus_items(fundus_items()[-i])
-            if (fundus_items()[[i]][["type"]] == "detachment") {
-              showModal(modify_detachment)
-            }
-            if (fundus_items()[[i]][["type"]] == "tear") {
-              showModal(modify_tear)
-            }
-            if (fundus_items()[[i]][["type"]] == "equatorial") {
-              showModal(modify_equatorial)
-            }
+            modal <- get(paste0("modify_", new_fundus_item()$type),
+              mode = "function"
+            )
+            showModal(modal(new_fundus_item()))
           },
           ignoreInit = TRUE
         )
@@ -280,10 +269,8 @@ server <- function(input, output, session) {
     )
   })
 
-  output$svg_image <- renderUI({
-    fundus_image(input$eye, fundus_items(), clip = TRUE, scale_image = 1.3) |> HTML()
-  })
 
+  # Modal: detachment -------------------------------------------------------
   output$detachment <- renderPlot({
     background_image <-
       fundus_image(input$eye, append(fundus_items(), list(new_fundus_item())), clip = FALSE, scale_image = 1) |>
@@ -306,10 +293,31 @@ server <- function(input, output, session) {
     new_fundus_item(new_obj)
   })
 
+  observeEvent(input$delete_point, {
+    modify_item <- new_fundus_item()
+    req(nrow(modify_item$path) > 0)
+    modify_item$path <- modify_item$path[-nrow(modify_item$path), ]
+    new_fundus_item(modify_item)
+  })
+
+  # Show JSON code ----------------------------------------------------------
   observeEvent(input$show_json, {
     showModal(modalDialog(p(toJSON(fundus_items(), pretty = TRUE, auto_unbox = TRUE))))
   })
 
+  observeEvent(input$delete_point, {
+    modify_item <- new_fundus_item()
+    req(nrow(modify_item$path) > 0)
+    modify_item$path <- modify_item$path[-nrow(modify_item$path), ]
+    new_fundus_item(modify_item)
+  })
+
+  # Render image ------------------------------------------------------------
+  output$svg_image <- renderUI({
+    fundus_image(input$eye, fundus_items(), clip = TRUE, scale_image = 1.3) |> HTML()
+  })
+
+  # Download image ----------------------------------------------------------
   output$download_word <- downloadHandler(
     filename = function() {
       paste("fundus_image.png")

@@ -22,6 +22,10 @@ detachment <- function(obj, radius = 10, clip = TRUE) {
     return("<g></g>")
   }
 
+  if (nrow(item) == 0) {
+    return("<g></g>")
+  }
+
   if (is.data.frame(item) && nrow(item) == 1) {
     x1 <- item$cx[1]
     y1 <- item$cy[1]
