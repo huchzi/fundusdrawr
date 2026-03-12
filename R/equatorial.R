@@ -35,5 +35,6 @@ A 5,5 0 0,0 {coords$x[1]},{coords$y[1]}
 fill="none"
 stroke="black"
 stroke-width="2"/>')
+
   return(stringr::str_c("<g>", lattice, lattice_border, "</g>"))
 }

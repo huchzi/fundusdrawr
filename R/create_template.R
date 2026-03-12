@@ -37,7 +37,7 @@ create_template <- function(eye_side = "OD", clip, scale_image = 1) {
   xml_add_child(svg,
     "rect",
     width = "100%",
-    heigth = "100%",
+    height = "100%",
     fill = "white"
   )
 

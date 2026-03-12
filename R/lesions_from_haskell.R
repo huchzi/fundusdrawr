@@ -1,11 +1,11 @@
-roundHoleElement <- function(clock, ecc) {
-  # Transformationen analog zu rotateElement $ translateElement
-  transform_str <- paste0(
-    "rotate(", clock, ") ",
-    "translate(", ecc, ")"
-  )
+roundhole <- function(roundhole_object) {
+  clock <- 30 * (roundhole_object$clock - 3) + 90
+  ecc <- roundhole_object$ecc
 
-  attrs <- c(
+  # Transformationen analog zu rotateElement $ translateElement
+  transform_str <- glue::glue("rotate({clock} 200 200) translate(0 -{ecc})")
+
+  new_attrs <- c(
     r = "5",
     cx = "200",
     cy = "200",
@@ -16,10 +16,10 @@ roundHoleElement <- function(clock, ecc) {
   )
 
   circle <- xml2::xml_new_root(
-    "circle",
-    .attrs = attrs,
-    .namespace = c(svg = "http://www.w3.org/2000/svg")
+    "circle"
+    # .namespace = c(svg = "http://www.w3.org/2000/svg")
   )
+  xml_attrs(circle) <- new_attrs
 
   circle
 }

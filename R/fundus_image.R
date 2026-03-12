@@ -21,8 +21,7 @@ render_objects <- function(object_list) {
     render_function <- get(obj$type, mode = "function")
 
     obj |>
-      render_function() |>
-      read_xml()
+      render_function()
   }
 
   purrr::map(object_list, render)

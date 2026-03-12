@@ -3,7 +3,7 @@ library(jsonlite)
 library(xml2)
 devtools::load_all()
 
-element_types <- c("detachment", "tear", "equatorial")
+element_types <- c("detachment", "tear", "equatorial", "roundhole")
 
 # UI ----------------------------------------------------------------------
 
@@ -17,6 +17,7 @@ ui <- fluidPage(
       actionButton("from_natural_language", "Erstelle aus Sprache"),
       hr(),
       actionButton("add_tear", "+ Hufeisenriss"),
+      actionButton("add_roundhole", "+ Rundforamen"),
       actionButton("add_detachment", "+ Netzhautablösung"),
       actionButton("add_equatorial", "+ Äquatoriale Degeneration"),
       hr(),
@@ -50,6 +51,22 @@ modify_tear <- function(tear_item) {
     footer = tagList(
       actionButton("save_tear", "Speichern"),
       actionButton("delete_tear", "Löschen"),
+      modalButton("Abbrechen")
+    )
+  )
+}
+
+modify_roundhole <- function(roundhole_item) {
+  modalDialog(
+    title = "Create round hole",
+    sliderInput("roundhole_clock", "Lokalisation (Uhrzeiten)",
+      min = 1, max = 12,
+      step = .5, value = roundhole_item$clock
+    ),
+    sliderInput("roundhole_ecc", label = "Exzentrizität", min = 0, max = 120, step = 5, value = roundhole_item$eccentricity),
+    footer = tagList(
+      actionButton("save_roundhole", "Speichern"),
+      actionButton("delete_roundhole", "Löschen"),
       modalButton("Abbrechen")
     )
   )
@@ -105,6 +122,12 @@ server <- function(input, output, session) {
     size = "medium"
   )
 
+  default_roundhole <- list(
+    type = "roundhole",
+    clock = 6,
+    eccentricity = 100
+  )
+
   default_detachment <- list(
     type = "detachment",
     path = NULL
@@ -121,7 +144,6 @@ server <- function(input, output, session) {
     observeEvent(input[[paste0("add_", elem_type)]], {
       remaining_fundus_items(fundus_items())
       this_new_item <- get(paste0("default_", elem_type))
-      print(this_new_item)
       new_fundus_item(this_new_item)
       modal <- get(paste0("modify_", elem_type), mode = "function")
       showModal(modal(this_new_item))
@@ -146,6 +168,22 @@ server <- function(input, output, session) {
     removeModal()
   })
 
+  observeEvent(input$save_roundhole, {
+    fundus_items(
+      sort_items(
+        c(
+          list(list(
+            type = "roundhole",
+            clock = input$roundhole_clock,
+            eccentricity = input$roundhole_ecc
+          )),
+          remaining_fundus_items()
+        )
+      )
+    )
+    removeModal()
+  })
+
   observeEvent(input$save_equatorial, {
     fundus_items(
       sort_items(
@@ -160,7 +198,6 @@ server <- function(input, output, session) {
       )
     )
     removeModal()
-    print(fundus_items())
   })
 
   observeEvent(input$save_detachment, {
@@ -270,10 +307,11 @@ server <- function(input, output, session) {
   })
 
 
-  # Modal: detachment -------------------------------------------------------
+  # DetachmentPlot   -------------------------------------------------------
   output$detachment <- renderPlot({
     background_image <-
-      fundus_image(input$eye, append(fundus_items(), list(new_fundus_item())), clip = FALSE, scale_image = 1) |>
+      fundus_image(input$eye, append(fundus_items(), list(new_fundus_item())), clip = FALSE, scale_image = 1)
+    background_image <- background_image |>
       svg_to_grob()
 
     ggplot2::ggplot(raster, ggplot2::aes(x = cx, y = cy)) +
