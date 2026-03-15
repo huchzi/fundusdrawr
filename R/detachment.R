@@ -8,22 +8,14 @@ clock_to_rad <- function(clock) {
   (clock %% 12) * 30 * pi / 180
 }
 
-toXY <- function(item) {
-  center_x <- 200
-  center_y <- 200
-  x <- item$ecc * cos(item$clock |> clock_to_rad()) + 200
-  y <- item$ecc * sin(item$clock |> clock_to_rad()) + 200
-  data.frame(x, y)
-}
-
 detachment <- function(obj, radius = 10, clip = TRUE) {
   item <- obj$path
   if (!is.data.frame(item)) {
-    return("g")
+    return("<g/>" |> read_xml())
   }
 
   if (nrow(item) == 0) {
-    return("g")
+    return("<g/>" |> read_xml())
   }
 
   if (is.data.frame(item) && nrow(item) == 1) {
@@ -47,7 +39,6 @@ detachment <- function(obj, radius = 10, clip = TRUE) {
 
   # Punkte holen
   points <- item |>
-    toXY() |>
     as.matrix()
   n <- nrow(points)
   if (n < 3) stop("Mindestens 3 Punkte für geschlossene Kurve nötig")

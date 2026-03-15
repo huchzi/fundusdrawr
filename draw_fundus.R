@@ -3,7 +3,20 @@ library(jsonlite)
 library(xml2)
 devtools::load_all()
 
-element_types <- c("detachment", "tear", "equatorial", "roundhole")
+element_types <- c(
+  "encirclingBand",
+  "detachment",
+  "equatorial",
+  "tear",
+  "roundhole"
+)
+
+sort_items <- function(item_list) {
+  ord <- sapply(item_list, function(x) x$type) |>
+    factor(levels = element_types, ordered = TRUE) |>
+    order()
+  item_list[ord]
+}
 
 # UI ----------------------------------------------------------------------
 
@@ -16,6 +29,7 @@ ui <- fluidPage(
       textAreaInput("natural_language", "Fundusbeschreibung in natürlicher Sprache"),
       actionButton("from_natural_language", "Erstelle aus Sprache"),
       hr(),
+      actionButton("add_encirclingBand", "+ Cerclage"),
       actionButton("add_tear", "+ Hufeisenriss"),
       actionButton("add_roundhole", "+ Rundforamen"),
       actionButton("add_detachment", "+ Netzhautablösung"),
@@ -105,13 +119,27 @@ modify_detachment <- function(detachment_item) {
   )
 }
 
+modify_encirclingBand <- function(encirclingBand_item) {
+  modalDialog(
+    title = "Cerclage",
+    footer = tagList(
+      actionButton("save_detachment", "Vorhanden"),
+      actionButton("delete_detachment", "Nicht vorhanden")
+    )
+  )
+}
+
 # Server ------------------------------------------------------------------
 
 
 server <- function(input, output, session) {
+
+
+  # Reactive vals -----------------------------------------------------------
   fundus_items <- reactiveVal(list())
   new_fundus_item <- reactiveVal(list())
   remaining_fundus_items <- reactiveVal(list())
+  raster <- reactiveVal(data.frame(cx = integer(0), cy = integer(0)))
 
 
   # Default element items -------------------------------------------------------
@@ -138,6 +166,8 @@ server <- function(input, output, session) {
     from = 11,
     to = 1
   )
+
+  default_encirclingBand <- list(type = "encirclingBand")
 
   # Create element -------------------------------------------------------------
   lapply(element_types, function(elem_type) {
@@ -207,6 +237,13 @@ server <- function(input, output, session) {
         remaining_fundus_items()
       ))
     )
+    removeModal()
+  })
+
+  observeEvent(input$save_encirclingBand, {
+    c(list(new_fundus_item()), remaining_fundus_items()) |>
+      sort_items() |>
+      fundus_items()
     removeModal()
   })
 
@@ -314,23 +351,27 @@ server <- function(input, output, session) {
     background_image <- background_image |>
       svg_to_grob()
 
-    ggplot2::ggplot(raster, ggplot2::aes(x = cx, y = cy)) +
+    ggplot2::ggplot(raster(), ggplot2::aes(x = cx, y = cy)) +
       ggplot2::annotation_custom(background_image,
         xmin = 0, xmax = 400
       ) +
-      ggplot2::geom_point(alpha = .3, size = .5) +
+      ggplot2::geom_point(size = 2, color = "blue") +
       ggplot2::coord_equal() +
-      ggplot2::scale_y_reverse() +
-      ggplot2::theme_void()
+      ggplot2::theme_void() +
+      ggplot2::scale_x_continuous(limits = c(0, 400)) +
+      ggplot2::scale_y_continuous(limits = c(0, 400), trans = "reverse")
   })
 
   observeEvent(input$select_point, {
-    tab <- nearPoints(raster, input$select_point, xvar = "cx", yvar = "cy")
+    # tab <- nearPoints(raster, input$select_point, xvar = "cx", yvar = "cy")
+    tab <- data.frame(cx = input$select_point$x, cy =  input$select_point$y)
+    raster(rbind(raster(), tab))
     new_obj <- new_fundus_item()
     new_obj$path <- rbind(new_obj$path, tab)
     new_fundus_item(new_obj)
   })
 
+  # removes last selection
   observeEvent(input$delete_point, {
     modify_item <- new_fundus_item()
     req(nrow(modify_item$path) > 0)
