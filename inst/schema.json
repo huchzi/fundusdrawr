@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "oneOf": [
+      {
+        "title": "Tear",
+        "properties": {
+          "type": { "const": "tear" },
+          "clock": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 12
+          },
+          "eccentricity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 120
+          },
+          "size": {
+            "type": "string",
+            "enum": ["small", "medium", "large"]
+          }
+        },
+        "required": ["type", "clock", "eccentricity", "size"],
+        "additionalProperties": false
+      },
+      {
+        "title": "Equatorial",
+        "properties": {
+          "type": { "const": "equatorial" },
+          "from": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 12
+          },
+          "to": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 12
+          }
+        },
+        "required": ["type", "from", "to"],
+        "additionalProperties": false
+      },
+      {
+        "title": "Detachment",
+        "properties": {
+          "type": { "const": "detachment" },
+          "path": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "cx": { "type": "number" },
+                "cy": { "type": "number" }
+              },
+              "required": ["cx", "cy"],
+              "additionalProperties": false
+            },
+            "minItems": 1
+          }
+        },
+        "required": ["type", "path"],
+        "additionalProperties": false
+      }
+    ]
+  }
+}
