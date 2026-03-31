@@ -8,21 +8,15 @@ fundus_image <- function(eye_side, objects, clip = TRUE, scale_image = 1) {
 
   lesions <- xml_find_first(fundus_template_xml, ".//g[@id='lesions']")
 
-  for (elem in render_objects(objects)) {
-    xml_add_child(lesions, elem)
+  for (elem in objects) {
+    print(elem$type)
+    render_fun <- get(elem$type, mode = "function")
+    print(render_fun)
+    arguments <- names(formals(render_fun))
+    stopifnot("obj" %in% arguments & "parent" %in% arguments)
+    render_fun(obj = elem, parent = lesions)
   }
   xml_code <- as.character(fundus_template_xml)
 
   return(xml_code)
-}
-
-render_objects <- function(object_list) {
-  render <- function(obj) {
-    render_function <- get(obj$type, mode = "function")
-
-    obj |>
-      render_function()
-  }
-
-  purrr::map(object_list, render)
 }

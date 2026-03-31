@@ -139,8 +139,6 @@ server <- function(input, output, session) {
   fundus_items <- reactiveVal(list())
   new_fundus_item <- reactiveVal(list())
   remaining_fundus_items <- reactiveVal(list())
-  raster <- reactiveVal(data.frame(cx = integer(0), cy = integer(0)))
-
 
   # Default element items -------------------------------------------------------
   default_tear <- list(
@@ -158,7 +156,7 @@ server <- function(input, output, session) {
 
   default_detachment <- list(
     type = "detachment",
-    path = NULL
+    path = data.frame(cx = integer(0), cy = integer(0))
   )
 
   default_equatorial <- list(
@@ -351,7 +349,7 @@ server <- function(input, output, session) {
     background_image <- background_image |>
       svg_to_grob()
 
-    ggplot2::ggplot(raster(), ggplot2::aes(x = cx, y = cy)) +
+    ggplot2::ggplot(new_fundus_item()$path, ggplot2::aes(x = cx, y = cy)) +
       ggplot2::annotation_custom(background_image,
         xmin = 0, xmax = 400
       ) +
@@ -365,7 +363,6 @@ server <- function(input, output, session) {
   observeEvent(input$select_point, {
     # tab <- nearPoints(raster, input$select_point, xvar = "cx", yvar = "cy")
     tab <- data.frame(cx = input$select_point$x, cy =  input$select_point$y)
-    raster(rbind(raster(), tab))
     new_obj <- new_fundus_item()
     new_obj$path <- rbind(new_obj$path, tab)
     new_fundus_item(new_obj)

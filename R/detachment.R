@@ -8,20 +8,29 @@ clock_to_rad <- function(clock) {
   (clock %% 12) * 30 * pi / 180
 }
 
-detachment <- function(obj, radius = 10, clip = TRUE) {
+detachment <- function(obj, radius = 10, clip = TRUE, parent) {
   item <- obj$path
   if (!is.data.frame(item)) {
-    return("<g/>" |> read_xml())
+    xml_add_child(parent, "g")
+    return()
   }
 
   if (nrow(item) == 0) {
-    return("<g/>" |> read_xml())
+    xml_add_child(parent, "g")
+    return()
   }
 
   if (is.data.frame(item) && nrow(item) == 1) {
     x1 <- item$cx[1]
     y1 <- item$cy[1]
-    return(glue::glue('<circle cx="{x1}" cy="{y1}" r="3" fill="black"/>') |> read_xml())
+    new_elem <- xml_add_child(parent,
+      "circle",
+      cx = x1,
+      cy = y1,
+      r = 3,
+      fill = "black"
+    )
+    return()
   }
 
   if (is.data.frame(item) && nrow(item) == 2) {
@@ -29,7 +38,15 @@ detachment <- function(obj, radius = 10, clip = TRUE) {
     y1 <- item$cy[1]
     x2 <- item$cx[2]
     y2 <- item$cy[2]
-    return(glue::glue('<path d="M {x1},{y1} L {x2},{y2} Z" stroke="blue" stroke-width="2" fill="blue" fill-opacity="0.5"/>') |> read_xml())
+    new_elem <- xml_add_child(parent,
+      "path",
+      d = glue::glue("M {x1},{y1} L {x2},{y2} Z"),
+      stroke = "blue",
+      `stroke-width` = "2",
+      fill = "blue",
+      `fill-opacity` = "0.5"
+    )
+    return()
   }
 
   # Hilfsfunktionen
@@ -70,5 +87,13 @@ detachment <- function(obj, radius = 10, clip = TRUE) {
 
   path_string <- paste(path_commands, collapse = " ") |> paste("Z")
 
-  glue::glue('<path d="{path_string}" stroke="blue" stroke-width="2" fill="blue" fill-opacity="0.5" stroke-linejoin="round"/>') |> read_xml()
+  xml_add_child(parent,
+    "path",
+    d = path_string,
+    stroke = "blue",
+    `stroke-width` = "2",
+    fill = "blue",
+    `fill-opacity` = "0.5",
+    `stroke-linejoin` = "round"
+  )
 }

@@ -1,12 +1,13 @@
-roundhole <- function(roundhole_object) {
-  clock <- 30 * (roundhole_object$clock - 3) + 90
-  ecc <- roundhole_object$ecc
+roundhole <- function(obj, parent) {
+  clock <- 30 * (obj$clock - 3) + 90
+  ecc <- obj$ecc
 
   # Transformationen analog zu rotateElement $ translateElement
   transform_str <- glue::glue("rotate({clock} 200 200) translate(0 -{ecc})")
 
-  new_attrs <- c(
-    r = "5",
+  xml_add_child(parent,
+    "circle",
+    r = 5,
     cx = "200",
     cy = "200",
     fill = "red",
@@ -14,14 +15,6 @@ roundhole <- function(roundhole_object) {
     `stroke-width` = "2",
     transform = transform_str
   )
-
-  circle <- xml2::xml_new_root(
-    "circle"
-    # .namespace = c(svg = "http://www.w3.org/2000/svg")
-  )
-  xml_attrs(circle) <- new_attrs
-
-  circle
 }
 
 horseshoe_path <- function(size) {

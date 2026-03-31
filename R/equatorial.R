@@ -1,4 +1,4 @@
-equatorial <- function(obj) {
+equatorial <- function(obj, parent) {
   type <- obj$type
   from <- obj$from
   to <- obj$to
@@ -25,16 +25,29 @@ equatorial <- function(obj) {
     )
   )
 
-  lattice_border <- glue::glue('<path d="
-M {coords$x[1]},{coords$y[1]}
-A 85,85 0 0,1 {coords$x[2]},{coords$y[2]}
-A 5,5 0 0,0 {coords$x[4]},{coords$y[4]}
-A 105,105 0 0,0 {coords$x[3]},{coords$y[3]}
-A 5,5 0 0,0 {coords$x[1]},{coords$y[1]}
-"
-fill="none"
-stroke="black"
-stroke-width="2"/>')
+  #   lattice_border <- glue::glue('<path d="
+  # M {coords$x[1]},{coords$y[1]}
+  # A 85,85 0 0,1 {coords$x[2]},{coords$y[2]}
+  # A 5,5 0 0,0 {coords$x[4]},{coords$y[4]}
+  # A 105,105 0 0,0 {coords$x[3]},{coords$y[3]}
+  # A 5,5 0 0,0 {coords$x[1]},{coords$y[1]}
+  # "
+  # fill="none"
+  # stroke="black"
+  # stroke-width="2"/>')
 
-  return(stringr::str_c("<g>", lattice, lattice_border, "</g>"))
+  new_group <- xml_add_child(parent, "g")
+
+  xml_add_child(new_group, "path",
+    d = glue::glue("M {coords$x[1]},{coords$y[1]}
+    A 85,85 0 0,1 {coords$x[2]},{coords$y[2]}
+    A 5,5 0 0,0 {coords$x[4]},{coords$y[4]}
+    A 105,105 0 0,0 {coords$x[3]},{coords$y[3]}
+    A 5,5 0 0,0 {coords$x[1]},{coords$y[1]}"),
+    fill = "none",
+    stroke = "black",
+    `stroke-width` = "2"
+  )
+
+  xml_add_child(new_group, lattice)
 }
