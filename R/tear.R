@@ -1,6 +1,6 @@
-#' @export
 tear <- function(obj, parent) {
   if (is.null(obj$eccentricity)) {
+    warning("Eccentricity not provided. Setting to default of 95°.")
     eccentricity <- 95
   } else {
     eccentricity <- obj$eccentricity
@@ -18,7 +18,7 @@ tear <- function(obj, parent) {
   path_d <- glue::glue("M{cx - sr},{cy} A{gr},{gr} 0 0,0 {cx + sr},{cy} A{sr},{sr} 0 0,1 {cx - sr},{cy} Z")
 
 
-  xml_add_child(parent,
+  xml2::xml_add_child(parent,
     "path",
     d = path_d,
     fill = "red",

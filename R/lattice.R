@@ -1,9 +1,15 @@
-equatorial <- function(obj, parent) {
+lattice <- function(obj, parent) {
   type <- obj$type
   from <- obj$from
   to <- obj$to
 
-  eccentricity <- 87
+  if (exists("obj$eccentricity")) {
+    eccentricity <- obj$eccentricity
+  } else {
+    warning("Lattice: eccentricity set to default of 95°.")
+    eccentricity <- 95
+  }
+
   coords <- clock_to_xy(c(from, to), rep(eccentricity, 2))
 
   lattice <- glue::glue('<defs> <path id="bogen" d="M {coords$x[1]},{coords$y[1]}
@@ -36,9 +42,9 @@ equatorial <- function(obj, parent) {
   # stroke="black"
   # stroke-width="2"/>')
 
-  new_group <- xml_add_child(parent, "g")
+  new_group <- xml2::xml_add_child(parent, "g")
 
-  xml_add_child(new_group, "path",
+  xml2::xml_add_child(new_group, "path",
     d = glue::glue("M {coords$x[1]},{coords$y[1]}
     A 85,85 0 0,1 {coords$x[2]},{coords$y[2]}
     A 5,5 0 0,0 {coords$x[4]},{coords$y[4]}
@@ -49,5 +55,5 @@ equatorial <- function(obj, parent) {
     `stroke-width` = "2"
   )
 
-  xml_add_child(new_group, lattice)
+  xml2::xml_add_child(new_group, lattice)
 }

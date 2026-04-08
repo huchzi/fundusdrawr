@@ -87,13 +87,15 @@ detachment <- function(obj, radius = 10, clip = TRUE, parent) {
 
   path_string <- paste(path_commands, collapse = " ") |> paste("Z")
 
-  xml_add_child(parent,
+  detachments <- xml2::xml_find_first(parent, ".//g[@id='detachments']")
+
+  xml_add_child(detachments,
     "path",
     d = path_string,
     stroke = "blue",
     `stroke-width` = "2",
     fill = "blue",
-    `fill-opacity` = "0.5",
+    `fill-opacity` = "1",
     `stroke-linejoin` = "round"
   )
 }

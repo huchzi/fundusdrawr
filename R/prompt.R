@@ -3,7 +3,7 @@ prompt <- 'Erstelle ausschließlich valides JSON (ohne Begleittext) nach folgend
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.com/ophthalmology-schema.json",
   "title": "Retina Lesion Data",
-  "description": "Schema für verschiedene ophthalmologische Strukturen (detachment, equatorial, tear).",
+  "description": "Schema für verschiedene ophthalmologische Strukturen (detachment, lattice, tear).",
   "type": "array",
   "items": {
     "type": "object",
@@ -11,7 +11,7 @@ prompt <- 'Erstelle ausschließlich valides JSON (ohne Begleittext) nach folgend
     "properties": {
       "type": {
         "type": "string",
-        "enum": ["detachment", "equatorial", "tear"]
+        "enum": ["detachment", "lattice", "tear"]
       }
     },
     "allOf": [
@@ -48,7 +48,7 @@ prompt <- 'Erstelle ausschließlich valides JSON (ohne Begleittext) nach folgend
         }
       },
       {
-        "if": { "properties": { "type": { "const": "equatorial" } } },
+        "if": { "properties": { "type": { "const": "lattice" } } },
         "then": {
           "required": ["from", "to"],
           "properties": {

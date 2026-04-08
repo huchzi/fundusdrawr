@@ -6,7 +6,7 @@ devtools::load_all()
 element_types <- c(
   "encirclingBand",
   "detachment",
-  "equatorial",
+  "lattice",
   "tear",
   "roundhole"
 )
@@ -28,12 +28,13 @@ ui <- fluidPage(
       hr(),
       textAreaInput("natural_language", "Fundusbeschreibung in natürlicher Sprache"),
       actionButton("from_natural_language", "Erstelle aus Sprache"),
+      actionButton("from_json", "Lade aus JSON"),
       hr(),
       actionButton("add_encirclingBand", "+ Cerclage"),
       actionButton("add_tear", "+ Hufeisenriss"),
       actionButton("add_roundhole", "+ Rundforamen"),
       actionButton("add_detachment", "+ Netzhautablösung"),
-      actionButton("add_equatorial", "+ Äquatoriale Degeneration"),
+      actionButton("add_lattice", "+ Gitterbeet"),
       hr(),
       downloadButton("download_word", "Skizze herunterladen"),
       actionButton("show_json", "JSON-Code zeigen")
@@ -86,21 +87,21 @@ modify_roundhole <- function(roundhole_item) {
   )
 }
 
-modify_equatorial <- function(equatorial_item) {
+modify_lattice <- function(lattice_item) {
   modalDialog(
-    title = "Create equatorial degeneration",
+    title = "Create lattice degeneration",
     sliderInput("from", "Von (Uhrzeiten)",
       min = 1, max = 12,
-      step = .5, value = equatorial_item$from
+      step = .5, value = lattice_item$from
     ),
     sliderInput("to", "Bis (Uhrzeiten)",
       min = 1, max = 12,
-      step = .5, value = equatorial_item$to
+      step = .5, value = lattice_item$to
     ),
-    sliderInput("equatorial_ecc", label = "Exzentrizität", min = 0, max = 120, step = 5, value = 100),
+    sliderInput("lattice_ecc", label = "Exzentrizität", min = 0, max = 120, step = 5, value = 100),
     footer = tagList(
-      actionButton("save_equatorial", "Speichern"),
-      actionButton("delete_equatorial", "Löschen"),
+      actionButton("save_lattice", "Speichern"),
+      actionButton("delete_lattice", "Löschen"),
       modalButton("Abbrechen")
     )
   )
@@ -159,10 +160,11 @@ server <- function(input, output, session) {
     path = data.frame(cx = integer(0), cy = integer(0))
   )
 
-  default_equatorial <- list(
-    type = "equatorial",
+  default_lattice <- list(
+    type = "lattice",
     from = 11,
-    to = 1
+    to = 1,
+    eccentricity = 95
   )
 
   default_encirclingBand <- list(type = "encirclingBand")
@@ -212,14 +214,15 @@ server <- function(input, output, session) {
     removeModal()
   })
 
-  observeEvent(input$save_equatorial, {
+  observeEvent(input$save_lattice, {
     fundus_items(
       sort_items(
         c(
           list(list(
-            type = "equatorial",
+            type = "lattice",
             from = input$from,
-            to = input$to
+            to = input$to,
+            eccentricity = input$lattice_ecc
           )),
           remaining_fundus_items()
         )
@@ -376,11 +379,13 @@ server <- function(input, output, session) {
     new_fundus_item(modify_item)
   })
 
-  # Show JSON code ----------------------------------------------------------
+  # JSON code ----------------------------------------------------------
   observeEvent(input$show_json, {
     showModal(modalDialog(p(toJSON(fundus_items(), pretty = TRUE, auto_unbox = TRUE))))
   })
 
+
+  # Undo point --------------------------------------------------------------
   observeEvent(input$delete_point, {
     modify_item <- new_fundus_item()
     req(nrow(modify_item$path) > 0)
