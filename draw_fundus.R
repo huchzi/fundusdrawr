@@ -75,12 +75,8 @@ modify_tear <- function(tear_item) {
 
 modify_laser <- function(laser_item) {
   modalDialog(
-    title = "Create laser lesion",
-    sliderInput("laser_clock", "Lokalisation (Uhrzeiten)",
-      min = 1, max = 12,
-      step = .5, value = laser_item$clock
-    ),
-    sliderInput("laser_ecc", label = "Exzentrizität", min = 0, max = 120, step = 5, value = laser_item$eccentricity),
+    title = "Create laser lesions",
+    plotOutput("laser", click = "select_laser"),
     footer = tagList(
       actionButton("save_laser", "Speichern"),
       actionButton("delete_laser", "Löschen"),
@@ -169,8 +165,12 @@ server <- function(input, output, session) {
 
   default_laser <- list(
     type = "laser",
-    clock = 6,
-    eccentricity = 100
+    path = data.frame(
+      cx = numeric(0),
+      cy = numeric(0),
+      clock = numeric(0),
+      eccentricity = numeric(0)
+    )
   )
 
   default_roundhole <- list(
@@ -223,17 +223,17 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$save_laser, {
+    laser_item <- new_fundus_item()
+    laser_item$path <- laser_path(laser_item)
+    laser_item$clock <- NULL
+    laser_item$ecc <- NULL
+    laser_item$eccentricity <- NULL
+
     fundus_items(
-      sort_items(
-        c(
-          list(list(
-            type = "laser",
-            clock = input$laser_clock,
-            eccentricity = input$laser_ecc
-          )),
-          remaining_fundus_items()
-        )
-      )
+      sort_items(c(
+        list(laser_item),
+        remaining_fundus_items()
+      ))
     )
     removeModal()
   })
@@ -416,6 +416,59 @@ server <- function(input, output, session) {
     modify_item <- new_fundus_item()
     req(nrow(modify_item$path) > 0)
     modify_item$path <- modify_item$path[-nrow(modify_item$path), ]
+    new_fundus_item(modify_item)
+  })
+
+  # LaserPlot ---------------------------------------------------------------
+  output$laser <- renderPlot({
+    laser_item <- new_fundus_item()
+    laser_item$path <- laser_path(laser_item)
+
+    background_image <-
+      fundus_image(input$eye, append(remaining_fundus_items(), list(laser_item)), clip = FALSE, scale_image = 1)
+    background_image <- background_image |>
+      svg_to_grob()
+
+    ggplot2::ggplot(laser_item$path, ggplot2::aes(x = cx, y = cy)) +
+      ggplot2::annotation_custom(background_image,
+        xmin = 0, xmax = 400
+      ) +
+      ggplot2::geom_point(size = 2, color = "darkgreen") +
+      ggplot2::coord_equal() +
+      ggplot2::theme_void() +
+      ggplot2::scale_x_continuous(limits = c(0, 400)) +
+      ggplot2::scale_y_continuous(limits = c(0, 400), trans = "reverse")
+  })
+
+  observeEvent(input$select_laser, {
+    click <- data.frame(cx = input$select_laser$x, cy = input$select_laser$y)
+    click_coords <- xy_to_clock_eccentricity(click$cx, click$cy)
+
+    modify_item <- new_fundus_item()
+    modify_item$path <- laser_path(modify_item)
+    modify_item$clock <- NULL
+    modify_item$ecc <- NULL
+    modify_item$eccentricity <- NULL
+
+    if (nrow(modify_item$path) > 0) {
+      distances <- sqrt((modify_item$path$cx - click$cx)^2 + (modify_item$path$cy - click$cy)^2)
+      nearest <- which.min(distances)
+
+      if (distances[nearest] <= 12) {
+        modify_item$path <- modify_item$path[-nearest, ]
+        new_fundus_item(modify_item)
+        return()
+      }
+    }
+
+    new_laser <- data.frame(
+      cx = click$cx,
+      cy = click$cy,
+      clock = click_coords$clock,
+      eccentricity = click_coords$eccentricity
+    )
+
+    modify_item$path <- rbind(modify_item$path, new_laser)
     new_fundus_item(modify_item)
   })
 
