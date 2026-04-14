@@ -54,17 +54,13 @@ ui <- fluidPage(
 modify_tear <- function(tear_item) {
   modalDialog(
     title = "Create tear",
-    sliderInput("tear_clock", "Lokalisation (Uhrzeiten)",
-      min = 1, max = 12,
-      step = .5, value = tear_item$clock
-    ),
+    plotOutput("tear", click = "select_tear"),
     radioButtons("tear_size", "Größe",
       choiceNames = c("groß", "mittel", "klein"),
       choiceValues = c("large", "medium", "small"),
       selected = tear_item$size,
       inline = TRUE
     ),
-    sliderInput("tear_ecc", label = "Exzentrizität", min = 0, max = 120, step = 5, value = tear_item$eccentricity),
     footer = tagList(
       actionButton("save_tear", "Speichern"),
       actionButton("delete_tear", "Löschen"),
@@ -158,8 +154,8 @@ server <- function(input, output, session) {
   # Default element items -------------------------------------------------------
   default_tear <- list(
     type = "tear",
-    clock = 6,
-    eccentricity = 100,
+    clock = NULL,
+    eccentricity = NULL,
     size = "medium"
   )
 
@@ -206,18 +202,15 @@ server <- function(input, output, session) {
 
   # Add element to list ------------------------------------------------------------
   observeEvent(input$save_tear, {
+    tear_item <- new_fundus_item()
+    tear_item$size <- input$tear_size
+    req(!is.null(tear_item$clock), !is.null(tear_item$eccentricity))
+
     fundus_items(
-      sort_items(
-        c(
-          list(list(
-            type = "tear",
-            clock = input$tear_clock,
-            eccentricity = input$tear_ecc,
-            size = input$tear_size
-          )),
-          remaining_fundus_items()
-        )
-      )
+      sort_items(c(
+        list(tear_item),
+        remaining_fundus_items()
+      ))
     )
     removeModal()
   })
@@ -419,6 +412,41 @@ server <- function(input, output, session) {
     new_fundus_item(modify_item)
   })
 
+  # TearPlot ----------------------------------------------------------------
+  output$tear <- renderPlot({
+    tear_item <- new_fundus_item()
+    tear_item$size <- input$tear_size
+
+    objects <- remaining_fundus_items()
+    if (!is.null(tear_item$clock) && !is.null(tear_item$eccentricity)) {
+      objects <- append(objects, list(tear_item))
+    }
+
+    background_image <-
+      fundus_image(input$eye, objects, clip = FALSE, scale_image = 1)
+    background_image <- background_image |>
+      svg_to_grob()
+
+    ggplot2::ggplot() +
+      ggplot2::annotation_custom(background_image,
+        xmin = 0, xmax = 400
+      ) +
+      ggplot2::coord_equal() +
+      ggplot2::theme_void() +
+      ggplot2::scale_x_continuous(limits = c(0, 400)) +
+      ggplot2::scale_y_continuous(limits = c(0, 400), trans = "reverse")
+  })
+
+  observeEvent(input$select_tear, {
+    modify_item <- new_fundus_item()
+    click_coords <- xy_to_clock_eccentricity(input$select_tear$x, input$select_tear$y)
+
+    modify_item$clock <- click_coords$clock
+    modify_item$eccentricity <- click_coords$eccentricity
+    modify_item$size <- input$tear_size
+    new_fundus_item(modify_item)
+  })
+
   # LaserPlot ---------------------------------------------------------------
   output$laser <- renderPlot({
     laser_item <- new_fundus_item()
@@ -429,11 +457,10 @@ server <- function(input, output, session) {
     background_image <- background_image |>
       svg_to_grob()
 
-    ggplot2::ggplot(laser_item$path, ggplot2::aes(x = cx, y = cy)) +
+    ggplot2::ggplot() +
       ggplot2::annotation_custom(background_image,
         xmin = 0, xmax = 400
       ) +
-      ggplot2::geom_point(size = 2, color = "darkgreen") +
       ggplot2::coord_equal() +
       ggplot2::theme_void() +
       ggplot2::scale_x_continuous(limits = c(0, 400)) +

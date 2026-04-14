@@ -1,4 +1,4 @@
-tear <- function(obj, parent) {
+tear_coords <- function(obj) {
   if (is.null(obj$eccentricity)) {
     warning("Eccentricity not provided. Setting to default of 95°.")
     eccentricity <- 95
@@ -10,6 +10,16 @@ tear <- function(obj, parent) {
   angle <- 2 * pi * (uhr %% 12) / 12
   cx <- 200 + eccentricity * sin(angle)
   cy <- 200 - eccentricity * cos(angle)
+
+  list(clock = uhr, eccentricity = eccentricity, angle = angle, cx = cx, cy = cy)
+}
+
+tear <- function(obj, parent) {
+  coords <- tear_coords(obj)
+
+  cx <- coords$cx
+  cy <- coords$cy
+  angle <- coords$angle
 
   gr <- ifelse(obj$size == "large", 20, 12)
   sr <- ifelse(obj$size == "large", 15, 8)
