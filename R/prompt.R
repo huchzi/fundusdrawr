@@ -3,7 +3,7 @@ prompt <- 'Erstelle ausschließlich valides JSON (ohne Begleittext) nach folgend
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.com/ophthalmology-schema.json",
   "title": "Retina Lesion Data",
-  "description": "Schema für verschiedene ophthalmologische Strukturen (detachment, lattice, tear).",
+  "description": "Schema für verschiedene ophthalmologische Strukturen (detachment, lattice, tear, laser).",
   "type": "array",
   "items": {
     "type": "object",
@@ -11,7 +11,7 @@ prompt <- 'Erstelle ausschließlich valides JSON (ohne Begleittext) nach folgend
     "properties": {
       "type": {
         "type": "string",
-        "enum": ["detachment", "lattice", "tear"]
+        "enum": ["detachment", "lattice", "tear", "laser"]
       }
     },
     "allOf": [
@@ -54,6 +54,17 @@ prompt <- 'Erstelle ausschließlich valides JSON (ohne Begleittext) nach folgend
           "properties": {
             "from": { "type": "number", "description": "Startposition (z. B. Uhrzeit 0–12)." },
             "to": { "type": "number", "description": "Endposition (z. B. Uhrzeit 0–12)." }
+          },
+          "additionalProperties": false
+        }
+      },
+      {
+        "if": { "properties": { "type": { "const": "laser" } } },
+        "then": {
+          "required": ["clock", "eccentricity"],
+          "properties": {
+            "clock": { "type": "number", "description": "Position der Laserkoagulation in Stunden (0–12)." },
+            "eccentricity": { "type": "number", "description": "Exzentrizität vom Zentrum." }
           },
           "additionalProperties": false
         }

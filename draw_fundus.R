@@ -8,6 +8,7 @@ element_types <- c(
   "detachment",
   "lattice",
   "tear",
+  "laser",
   "roundhole"
 )
 
@@ -32,6 +33,7 @@ ui <- fluidPage(
       hr(),
       actionButton("add_encirclingBand", "+ Cerclage"),
       actionButton("add_tear", "+ Hufeisenriss"),
+      actionButton("add_laser", "+ Laser"),
       actionButton("add_roundhole", "+ Rundforamen"),
       actionButton("add_detachment", "+ Netzhautablösung"),
       actionButton("add_lattice", "+ Gitterbeet"),
@@ -66,6 +68,22 @@ modify_tear <- function(tear_item) {
     footer = tagList(
       actionButton("save_tear", "Speichern"),
       actionButton("delete_tear", "Löschen"),
+      modalButton("Abbrechen")
+    )
+  )
+}
+
+modify_laser <- function(laser_item) {
+  modalDialog(
+    title = "Create laser lesion",
+    sliderInput("laser_clock", "Lokalisation (Uhrzeiten)",
+      min = 1, max = 12,
+      step = .5, value = laser_item$clock
+    ),
+    sliderInput("laser_ecc", label = "Exzentrizität", min = 0, max = 120, step = 5, value = laser_item$eccentricity),
+    footer = tagList(
+      actionButton("save_laser", "Speichern"),
+      actionButton("delete_laser", "Löschen"),
       modalButton("Abbrechen")
     )
   )
@@ -149,6 +167,12 @@ server <- function(input, output, session) {
     size = "medium"
   )
 
+  default_laser <- list(
+    type = "laser",
+    clock = 6,
+    eccentricity = 100
+  )
+
   default_roundhole <- list(
     type = "roundhole",
     clock = 6,
@@ -190,6 +214,22 @@ server <- function(input, output, session) {
             clock = input$tear_clock,
             eccentricity = input$tear_ecc,
             size = input$tear_size
+          )),
+          remaining_fundus_items()
+        )
+      )
+    )
+    removeModal()
+  })
+
+  observeEvent(input$save_laser, {
+    fundus_items(
+      sort_items(
+        c(
+          list(list(
+            type = "laser",
+            clock = input$laser_clock,
+            eccentricity = input$laser_ecc
           )),
           remaining_fundus_items()
         )
