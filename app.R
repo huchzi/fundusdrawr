@@ -144,8 +144,6 @@ modify_encirclingBand <- function(encirclingBand_item) {
 
 
 server <- function(input, output, session) {
-
-
   # Reactive vals -----------------------------------------------------------
   fundus_items <- reactiveVal(list())
   new_fundus_item <- reactiveVal(list())
@@ -398,7 +396,7 @@ server <- function(input, output, session) {
 
   observeEvent(input$select_point, {
     # tab <- nearPoints(raster, input$select_point, xvar = "cx", yvar = "cy")
-    tab <- data.frame(cx = input$select_point$x, cy =  input$select_point$y)
+    tab <- data.frame(cx = input$select_point$x, cy = input$select_point$y)
     new_obj <- new_fundus_item()
     new_obj$path <- rbind(new_obj$path, tab)
     new_fundus_item(new_obj)
