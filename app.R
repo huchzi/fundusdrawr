@@ -84,6 +84,7 @@ modify_laser <- function(laser_item) {
 modify_roundhole <- function(roundhole_item) {
   modalDialog(
     title = "Create round hole",
+    htmlOutput("dialog_svg_image"),
     sliderInput("roundhole_clock", "Lokalisation (Uhrzeiten)",
       min = 1, max = 12,
       step = .5, value = roundhole_item$clock
@@ -100,6 +101,7 @@ modify_roundhole <- function(roundhole_item) {
 modify_lattice <- function(lattice_item) {
   modalDialog(
     title = "Create lattice degeneration",
+    htmlOutput("dialog_svg_image"),
     sliderInput("from", "Von (Uhrzeiten)",
       min = 1, max = 12,
       step = .5, value = lattice_item$from
@@ -133,6 +135,7 @@ modify_detachment <- function(detachment_item) {
 modify_encirclingBand <- function(encirclingBand_item) {
   modalDialog(
     title = "Cerclage",
+    htmlOutput("dialog_svg_image"),
     footer = tagList(
       actionButton("save_detachment", "Vorhanden"),
       actionButton("delete_detachment", "Nicht vorhanden")
@@ -148,6 +151,25 @@ server <- function(input, output, session) {
   fundus_items <- reactiveVal(list())
   new_fundus_item <- reactiveVal(list())
   remaining_fundus_items <- reactiveVal(list())
+  inverted <- reactiveVal(FALSE)
+
+  display_to_model_coords <- function(x, y) {
+    if (!isTRUE(inverted())) {
+      return(list(x = x, y = y))
+    }
+
+    list(x = 400 - x, y = 400 - y)
+  }
+
+  model_to_display_path <- function(path) {
+    if (!isTRUE(inverted()) || !is.data.frame(path) || nrow(path) == 0) {
+      return(path)
+    }
+
+    path$cx <- 400 - path$cx
+    path$cy <- 400 - path$cy
+    path
+  }
 
   # Default element items -------------------------------------------------------
   default_tear <- list(
@@ -186,6 +208,61 @@ server <- function(input, output, session) {
   )
 
   default_encirclingBand <- list(type = "encirclingBand")
+
+  current_dialog_item <- reactive({
+    item <- new_fundus_item()
+
+    if (length(item) == 0 || is.null(item$type)) {
+      return(item)
+    }
+
+    if (identical(item$type, "tear") && !is.null(input$tear_size)) {
+      item$size <- input$tear_size
+    }
+
+    if (identical(item$type, "roundhole")) {
+      if (!is.null(input$roundhole_clock)) {
+        item$clock <- input$roundhole_clock
+      }
+      if (!is.null(input$roundhole_ecc)) {
+        item$eccentricity <- input$roundhole_ecc
+      }
+    }
+
+    if (identical(item$type, "lattice")) {
+      if (!is.null(input$from)) {
+        item$from <- input$from
+      }
+      if (!is.null(input$to)) {
+        item$to <- input$to
+      }
+      if (!is.null(input$lattice_ecc)) {
+        item$eccentricity <- input$lattice_ecc
+      }
+    }
+
+    item
+  })
+
+  preview_objects <- reactive({
+    objects <- remaining_fundus_items()
+    item <- current_dialog_item()
+
+    if (length(item) == 0 || is.null(item$type)) {
+      return(objects)
+    }
+
+    if (identical(item$type, "tear") &&
+        (is.null(item$clock) || is.null(item$eccentricity))) {
+      return(objects)
+    }
+
+    append(objects, list(item))
+  })
+
+  observeEvent(input$toggle_inverted, {
+    inverted(!isTRUE(inverted()))
+  })
 
   # Create element -------------------------------------------------------------
   lapply(element_types, function(elem_type) {
@@ -349,7 +426,14 @@ server <- function(input, output, session) {
     for (i in 1:length(fundus_items())) {
       bttns <- list(bttns, actionButton(
         glue::glue("modify{i}"),
-        fundus_image(input$eye, fundus_items()[i], clip = TRUE, scale_image = .2) |> HTML()
+        fundus_image(
+          input$eye,
+          fundus_items()[i],
+          clip = TRUE,
+          scale_image = .2,
+          inverted = inverted(),
+          show_controls = FALSE
+        ) |> HTML()
       ))
     }
     bttns
@@ -379,11 +463,20 @@ server <- function(input, output, session) {
   # DetachmentPlot   -------------------------------------------------------
   output$detachment <- renderPlot({
     background_image <-
-      fundus_image(input$eye, append(fundus_items(), list(new_fundus_item())), clip = FALSE, scale_image = 1)
+      fundus_image(
+        input$eye,
+        preview_objects(),
+        clip = FALSE,
+        scale_image = 1,
+        inverted = inverted(),
+        show_controls = FALSE
+      )
     background_image <- background_image |>
       svg_to_grob()
 
-    ggplot2::ggplot(new_fundus_item()$path, ggplot2::aes(x = cx, y = cy)) +
+    display_path <- model_to_display_path(new_fundus_item()$path)
+
+    ggplot2::ggplot(display_path, ggplot2::aes(x = cx, y = cy)) +
       ggplot2::annotation_custom(background_image,
         xmin = 0, xmax = 400
       ) +
@@ -395,8 +488,8 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$select_point, {
-    # tab <- nearPoints(raster, input$select_point, xvar = "cx", yvar = "cy")
-    tab <- data.frame(cx = input$select_point$x, cy = input$select_point$y)
+    click_coords <- display_to_model_coords(input$select_point$x, input$select_point$y)
+    tab <- data.frame(cx = click_coords$x, cy = click_coords$y)
     new_obj <- new_fundus_item()
     new_obj$path <- rbind(new_obj$path, tab)
     new_fundus_item(new_obj)
@@ -421,7 +514,14 @@ server <- function(input, output, session) {
     }
 
     background_image <-
-      fundus_image(input$eye, objects, clip = FALSE, scale_image = 1)
+      fundus_image(
+        input$eye,
+        objects,
+        clip = FALSE,
+        scale_image = 1,
+        inverted = inverted(),
+        show_controls = FALSE
+      )
     background_image <- background_image |>
       svg_to_grob()
 
@@ -437,7 +537,8 @@ server <- function(input, output, session) {
 
   observeEvent(input$select_tear, {
     modify_item <- new_fundus_item()
-    click_coords <- xy_to_clock_eccentricity(input$select_tear$x, input$select_tear$y)
+    model_coords <- display_to_model_coords(input$select_tear$x, input$select_tear$y)
+    click_coords <- xy_to_clock_eccentricity(model_coords$x, model_coords$y)
 
     modify_item$clock <- click_coords$clock
     modify_item$eccentricity <- click_coords$eccentricity
@@ -451,7 +552,14 @@ server <- function(input, output, session) {
     laser_item$path <- laser_path(laser_item)
 
     background_image <-
-      fundus_image(input$eye, append(remaining_fundus_items(), list(laser_item)), clip = FALSE, scale_image = 1)
+      fundus_image(
+        input$eye,
+        append(remaining_fundus_items(), list(laser_item)),
+        clip = FALSE,
+        scale_image = 1,
+        inverted = inverted(),
+        show_controls = FALSE
+      )
     background_image <- background_image |>
       svg_to_grob()
 
@@ -466,7 +574,8 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$select_laser, {
-    click <- data.frame(cx = input$select_laser$x, cy = input$select_laser$y)
+    model_coords <- display_to_model_coords(input$select_laser$x, input$select_laser$y)
+    click <- data.frame(cx = model_coords$x, cy = model_coords$y)
     click_coords <- xy_to_clock_eccentricity(click$cx, click$cy)
 
     modify_item <- new_fundus_item()
@@ -513,7 +622,26 @@ server <- function(input, output, session) {
 
   # Render image ------------------------------------------------------------
   output$svg_image <- renderUI({
-    fundus_image(input$eye, fundus_items(), clip = TRUE, scale_image = 1.3) |> HTML()
+    fundus_image(
+      input$eye,
+      fundus_items(),
+      clip = TRUE,
+      scale_image = 1.3,
+      inverted = inverted(),
+      show_controls = TRUE
+    ) |> HTML()
+  })
+
+  output$dialog_svg_image <- renderUI({
+    req(length(new_fundus_item()) > 0)
+    fundus_image(
+      input$eye,
+      preview_objects(),
+      clip = FALSE,
+      scale_image = 1,
+      inverted = inverted(),
+      show_controls = TRUE
+    ) |> HTML()
   })
 
   # Download image ----------------------------------------------------------
@@ -522,7 +650,14 @@ server <- function(input, output, session) {
       paste("fundus_image.png")
     },
     content = function(file) {
-      fundus_image(input$eye, fundus_items(), clip = TRUE, scale_image = 1) |>
+      fundus_image(
+        input$eye,
+        fundus_items(),
+        clip = TRUE,
+        scale_image = 1,
+        inverted = inverted(),
+        show_controls = FALSE
+      ) |>
         charToRaw() |>
         rsvg::rsvg_png(file = file, width = 400, height = 400)
       # writeLines(con = file)

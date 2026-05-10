@@ -1,10 +1,16 @@
 # Generate the SVG file from a content string
 #' @export
-fundus_image <- function(eye_side, objects, clip = TRUE, scale_image = 1) {
+fundus_image <- function(eye_side, objects, clip = TRUE, scale_image = 1, inverted = FALSE, show_controls = FALSE) {
   h <- 400 * scale_image
   w <- 400 * scale_image
 
-  fundus_template_xml <- create_template(eye_side, clip = clip, scale_image)
+  fundus_template_xml <- create_template(
+    eye_side,
+    clip = clip,
+    scale_image = scale_image,
+    inverted = inverted,
+    show_controls = show_controls
+  )
 
   lesions <- xml2::xml_find_first(fundus_template_xml, ".//g[@id='lesions']")
 

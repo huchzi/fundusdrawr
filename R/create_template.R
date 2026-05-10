@@ -1,6 +1,8 @@
-create_template <- function(eye_side = "OD", clip, scale_image = 1) {
+create_template <- function(eye_side = "OD", clip, scale_image = 1, inverted = FALSE, show_controls = FALSE) {
   h <- 400 * scale_image
   w <- 400 * scale_image
+  center_x <- w / 2
+  center_y <- h / 2
 
   svg <- xml2::xml_new_root(
     "svg",
@@ -12,7 +14,7 @@ create_template <- function(eye_side = "OD", clip, scale_image = 1) {
 
   style <- xml2::xml_add_child(svg, "style")
 
-  xml2::xml_set_text(style, ".grid   { fill:none; stroke:black; stroke-width:1 } .border { fill:none; stroke:black; stroke-width:2 } .vessel { fill:none; stroke:#f20d0d; stroke-width:3 }")
+  xml2::xml_set_text(style, ".grid { fill:none; stroke:black; stroke-width:1 } .border { fill:none; stroke:black; stroke-width:2 } .vessel { fill:none; stroke:#f20d0d; stroke-width:3 } .invert-button { cursor:pointer }")
   transform_attributes <- ifelse(eye_side == "OS",
     glue::glue("translate({w},0) scale(-{scale_image} {scale_image})"),
     glue::glue("scale({scale_image} {scale_image})")
@@ -41,7 +43,66 @@ create_template <- function(eye_side = "OD", clip, scale_image = 1) {
     fill = "white"
   )
 
-  fundus <- xml2::xml_add_child(svg, "g", id = "fundus", transform = transform_attributes)
+  if (show_controls) {
+    control <- xml2::xml_add_child(
+      svg,
+      "g",
+      id = "invert-control",
+      class = "invert-button",
+      onclick = "if (window.Shiny) Shiny.setInputValue('toggle_inverted', Math.random(), {priority: 'event'})"
+    )
+
+    xml2::xml_add_child(
+      control,
+      "rect",
+      x = 12,
+      y = 12,
+      width = 92,
+      height = 28,
+      rx = 6,
+      ry = 6,
+      fill = "#f4f4f4",
+      stroke = "black",
+      `stroke-width` = "1"
+    )
+
+    xml2::xml_add_child(
+      control,
+      "text",
+      "180° drehen",
+      x = 58,
+      y = 31,
+      fill = "black",
+      `font-family` = "sans-serif",
+      `font-size` = "12",
+      `text-anchor` = "middle"
+    )
+  }
+
+  if (isTRUE(inverted)) {
+    xml2::xml_add_child(
+      svg,
+      "text",
+      "invertiert",
+      x = w - 14,
+      y = 30,
+      fill = "black",
+      `font-family` = "sans-serif",
+      `font-size` = "18",
+      `font-weight` = "bold",
+      `text-anchor` = "end"
+    )
+  }
+
+  canvas_transform <- if (isTRUE(inverted)) {
+    glue::glue("rotate(180 {center_x} {center_y})")
+  } else {
+    NULL
+  }
+
+  canvas <- xml2::xml_add_child(svg, "g", id = "fundus-canvas", transform = canvas_transform)
+
+  fundus <- xml2::xml_add_child(canvas, "g", id = "fundus", transform = transform_attributes)
 
 
   xml2::xml_add_child(
@@ -141,7 +202,7 @@ create_template <- function(eye_side = "OD", clip, scale_image = 1) {
 
   clip_url <- ifelse(clip, "url(#oraClip)", "")
 
-  lesions <- xml2::xml_add_child(svg,
+  lesions <- xml2::xml_add_child(canvas,
     "g",
     id = "lesions",
     transform = glue::glue("scale({scale_image} {scale_image})"),
