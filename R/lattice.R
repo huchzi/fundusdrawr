@@ -18,34 +18,63 @@ lattice <- function(obj, parent) {
     span <- 12
   }
 
-  arc_radii <- c(eccentricity + 8, eccentricity + 8, eccentricity - 8, eccentricity - 8)
-  arc_coords <- clock_to_xy(c(from, to, from, to), arc_radii)
+  midpoint <- (from + span / 2) %% 12
+  if (isTRUE(all.equal(midpoint, 0))) {
+    midpoint <- 12
+  }
+
+  start_clock <- 12 - span / 2
+  stop_clock <- 12 + span / 2
 
   outer_radius <- eccentricity + 10
   inner_radius <- eccentricity - 8
+  cap_radius <- (outer_radius - inner_radius) / 2
 
-  new_group <- xml2::xml_add_child(parent, "g")
+  outer_points <- clock_to_xy(c(start_clock, stop_clock), rep(outer_radius, 2))
+  inner_points <- clock_to_xy(c(start_clock, stop_clock), rep(inner_radius, 2))
 
-  arc_path <- glue::glue(
-    "M {arc_coords$x[1]},{arc_coords$y[1]} ",
-    "A {outer_radius},{outer_radius} 0 0,1 {arc_coords$x[2]},{arc_coords$y[2]} ",
-    "A 8,8 0 0,1 {arc_coords$x[4]},{arc_coords$y[4]} ",
-    "A {inner_radius},{inner_radius} 0 0,0 {arc_coords$x[3]},{arc_coords$y[3]} ",
-    "A 8,8 0 0,1 {arc_coords$x[1]},{arc_coords$y[1]}"
+  large_arc_flag <- ifelse(span > 6, 1, 0)
+  rotation <- midpoint * 30
+
+  new_group <- xml2::xml_add_child(
+    parent,
+    "g",
+    transform = glue::glue("rotate({rotation} 200 200)")
   )
 
-  xml2::xml_add_child(new_group, "path",
-    d = arc_path,
-    fill = "none",
-    stroke = "black",
-    `stroke-width` = "2",
-    opacity = "0.8"
+  path_specs <- list(
+    glue::glue(
+      "M {outer_points$x[1]},{outer_points$y[1]} ",
+      "A {outer_radius},{outer_radius} 0 {large_arc_flag},1 {outer_points$x[2]},{outer_points$y[2]}"
+    ),
+    glue::glue(
+      "M {inner_points$x[1]},{inner_points$y[1]} ",
+      "A {inner_radius},{inner_radius} 0 {large_arc_flag},1 {inner_points$x[2]},{inner_points$y[2]}"
+    ),
+    glue::glue(
+      "M {outer_points$x[1]},{outer_points$y[1]} ",
+      "A {cap_radius},{cap_radius} 0 0,0 {inner_points$x[1]},{inner_points$y[1]}"
+    ),
+    glue::glue(
+      "M {outer_points$x[2]},{outer_points$y[2]} ",
+      "A {cap_radius},{cap_radius} 0 0,1 {inner_points$x[2]},{inner_points$y[2]}"
+    )
   )
 
-  quarter_hours <- seq(0, 11.75, by = 0.25)
-  relative_positions <- (quarter_hours - from) %% 12
-  keep <- relative_positions >= 0.25 & relative_positions <= (span - 0.25)
-  lattice_clocks <- quarter_hours[keep]
+  for (path_d in path_specs) {
+    xml2::xml_add_child(new_group, "path",
+      d = path_d,
+      fill = "none",
+      stroke = "black",
+      `stroke-width` = "2",
+      opacity = "0.8"
+    )
+  }
+
+  local_clocks <- seq(0, 12, by = 0.25)
+  start_limit <- 11.75 - span / 2
+  stop_limit <- span / 2 + 0.25
+  lattice_clocks <- local_clocks[local_clocks < stop_limit | local_clocks > start_limit]
 
   for (clock in lattice_clocks) {
     xml2::xml_add_child(new_group,

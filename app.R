@@ -101,16 +101,11 @@ modify_roundhole <- function(roundhole_item) {
 modify_lattice <- function(lattice_item) {
   modalDialog(
     title = "Create lattice degeneration",
-    htmlOutput("dialog_svg_image"),
-    sliderInput("from", "Von (Uhrzeiten)",
-      min = 1, max = 12,
-      step = .5, value = lattice_item$from
+    plotOutput("lattice", click = "select_lattice"),
+    sliderInput("lattice_extent", "Ausdehnung (Uhrzeiten)",
+      min = 0.5, max = 12,
+      step = 0.5, value = ifelse(is.null(lattice_item$extent), 3, lattice_item$extent)
     ),
-    sliderInput("to", "Bis (Uhrzeiten)",
-      min = 1, max = 12,
-      step = .5, value = lattice_item$to
-    ),
-    sliderInput("lattice_ecc", label = "Exzentrizität", min = 0, max = 120, step = 5, value = 100),
     footer = tagList(
       actionButton("save_lattice", "Speichern"),
       actionButton("delete_lattice", "Löschen"),
@@ -202,12 +197,51 @@ server <- function(input, output, session) {
 
   default_lattice <- list(
     type = "lattice",
-    from = 11,
-    to = 1,
-    eccentricity = 95
+    clock = NULL,
+    eccentricity = NULL,
+    extent = 3
   )
 
   default_encirclingBand <- list(type = "encirclingBand")
+
+  lattice_bounds <- function(clock, extent) {
+    from <- (clock - extent / 2) %% 12
+    to <- (clock + extent / 2) %% 12
+
+    if (isTRUE(all.equal(from, 0))) {
+      from <- 12
+    }
+
+    if (isTRUE(all.equal(to, 0))) {
+      to <- 12
+    }
+
+    list(from = from, to = to)
+  }
+
+  lattice_modal_item <- function(item) {
+    if (!identical(item$type, "lattice")) {
+      return(item)
+    }
+
+    if (is.null(item$clock) && !is.null(item$from) && !is.null(item$to)) {
+      span <- (as.numeric(item$to) - as.numeric(item$from)) %% 12
+      if (isTRUE(all.equal(span, 0))) {
+        span <- 12
+      }
+      item$clock <- (as.numeric(item$from) + span / 2) %% 12
+      if (isTRUE(all.equal(item$clock, 0))) {
+        item$clock <- 12
+      }
+      item$extent <- span
+    }
+
+    if (is.null(item$extent)) {
+      item$extent <- 3
+    }
+
+    item
+  }
 
   current_dialog_item <- reactive({
     item <- new_fundus_item()
@@ -230,14 +264,16 @@ server <- function(input, output, session) {
     }
 
     if (identical(item$type, "lattice")) {
-      if (!is.null(input$from)) {
-        item$from <- input$from
+      item <- lattice_modal_item(item)
+
+      if (!is.null(input$lattice_extent)) {
+        item$extent <- input$lattice_extent
       }
-      if (!is.null(input$to)) {
-        item$to <- input$to
-      }
-      if (!is.null(input$lattice_ecc)) {
-        item$eccentricity <- input$lattice_ecc
+
+      if (!is.null(item$clock) && !is.null(item$eccentricity) && !is.null(item$extent)) {
+        bounds <- lattice_bounds(item$clock, item$extent)
+        item$from <- bounds$from
+        item$to <- bounds$to
       }
     }
 
@@ -323,14 +359,17 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$save_lattice, {
+    lattice_item <- current_dialog_item()
+    req(!is.null(lattice_item$clock), !is.null(lattice_item$eccentricity), !is.null(lattice_item$extent))
+
     fundus_items(
       sort_items(
         c(
           list(list(
             type = "lattice",
-            from = input$from,
-            to = input$to,
-            eccentricity = input$lattice_ecc
+            from = lattice_item$from,
+            to = lattice_item$to,
+            eccentricity = lattice_item$eccentricity
           )),
           remaining_fundus_items()
         )
@@ -543,6 +582,53 @@ server <- function(input, output, session) {
     modify_item$clock <- click_coords$clock
     modify_item$eccentricity <- click_coords$eccentricity
     modify_item$size <- input$tear_size
+    new_fundus_item(modify_item)
+  })
+
+  # LatticePlot -------------------------------------------------------------
+  output$lattice <- renderPlot({
+    lattice_item <- current_dialog_item()
+
+    objects <- remaining_fundus_items()
+    if (!is.null(lattice_item$clock) && !is.null(lattice_item$eccentricity)) {
+      objects <- append(objects, list(lattice_item))
+    }
+
+    background_image <-
+      fundus_image(
+        input$eye,
+        objects,
+        clip = FALSE,
+        scale_image = 1,
+        inverted = inverted(),
+        show_controls = FALSE
+      )
+    background_image <- background_image |>
+      svg_to_grob()
+
+    ggplot2::ggplot() +
+      ggplot2::annotation_custom(background_image,
+        xmin = 0, xmax = 400
+      ) +
+      ggplot2::coord_equal() +
+      ggplot2::theme_void() +
+      ggplot2::scale_x_continuous(limits = c(0, 400)) +
+      ggplot2::scale_y_continuous(limits = c(0, 400), trans = "reverse")
+  })
+
+  observeEvent(input$select_lattice, {
+    modify_item <- lattice_modal_item(new_fundus_item())
+    model_coords <- display_to_model_coords(input$select_lattice$x, input$select_lattice$y)
+    click_coords <- xy_to_clock_eccentricity(model_coords$x, model_coords$y)
+
+    modify_item$clock <- click_coords$clock
+    modify_item$eccentricity <- click_coords$eccentricity
+    if (!is.null(input$lattice_extent)) {
+      modify_item$extent <- input$lattice_extent
+    }
+    bounds <- lattice_bounds(modify_item$clock, modify_item$extent)
+    modify_item$from <- bounds$from
+    modify_item$to <- bounds$to
     new_fundus_item(modify_item)
   })
 
